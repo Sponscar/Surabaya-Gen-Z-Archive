@@ -1,4 +1,4 @@
-# 📄 Product Requirements Document (PRD) — FINAL v3.0
+# Product Requirements Document (PRD) — FINAL v3.0
 
 # SGZA: Surabaya Gen-Z Archive
 
@@ -6,7 +6,7 @@
 |---|---|
 | **Versi** | 3.0 (Final — Sprint 1 / MVP, **deadline 3 November 2026**) |
 | **Tanggal** | 2 November 2026 |
-| **Status** | ✅ Approved — Siap Development |
+| **Status** | [OK] Approved — Siap Development |
 
 ---
 
@@ -37,9 +37,9 @@ SGZA (Surabaya Gen-Z Archive) adalah repositori digital berbasis partisipasi pub
 | Map library (frontend) | **Leaflet** | Cepat untuk Sprint 1, upgradeable ke MapLibre GL |
 | Monorepo tool | **pnpm workspaces + Turborepo** | Shared types antara web & api, satu command dev |
 
-> ✅ **Keputusan final:** TypeScript end-to-end. NestJS + MikroORM + PostGIS. Monorepo dengan shared types package.
+> [OK] **Keputusan final:** TypeScript end-to-end. NestJS + MikroORM + PostGIS. Monorepo dengan shared types package.
 
-> ⚠️ **Compliance (UU PDP):** Foto KTP & NIK disimpan terenkripsi, akses admin-only, persetujuan eksplisit user saat registrasi, kebijakan retensi.
+> [PERINGATAN] **Compliance (UU PDP):** Foto KTP & NIK disimpan terenkripsi, akses admin-only, persetujuan eksplisit user saat registrasi, kebijakan retensi.
 
 ---
 
@@ -61,7 +61,7 @@ sgza/
 │   ├── web/                    # Vue 3 + Vite + TS (Brutalism UI)
 │   └── api/                    # NestJS + MikroORM + PostGIS
 ├── packages/
-│   └── shared/                 # ⭐ types dipakai web + api
+│   └── shared/                 # types dipakai web + api
 │       ├── types/user.ts       # User, JenisInstansi, StatusAkun
 │       └── types/titik.ts      # TitikBudaya, StatusTitik
 ├── package.json                # workspace root
@@ -132,29 +132,29 @@ ubahStatus(target: StatusAkun) {
 
 ## 6. Probis Fitur
 
-### 6.1 Registrasi & Login 🔐
+### 6.1 Registrasi & Login
 1. Halaman Register → user mengisi: email, password, nama lengkap (sesuai KTP), **NIK**, alamat lengkap, no. WhatsApp, **jenis instansi** (`Perguruan Tinggi` / `Sekolah` / `Komunitas` / `Lainnya`), **field dinamis** sesuai pilihan (dinormalisasi frontend menjadi `instansiDetail`), upload foto KTP.
 2. Sistem cek domisili: **parse NIK** (kode wilayah `35.74` = Kota Surabaya). **User di luar Surabaya ditolak.**
 3. Akun berstatus `PENDING` → **belum bisa** pakai fitur utama.
 4. Admin validasi di dashboard → ubah status `VERIFIED` / `REJECTED` (lewat state machine — transisi ilegal ditolak).
 5. User login → akses penuh (tambah titik di Map Page). Login menghasilkan JWT.
 
-### 6.2 Halaman Sejarah 🏛️
+### 6.2 Halaman Sejarah
 1. Map menampilkan wilayah: **Barat, Timur, Selatan, Utara**.
 2. Klik wilayah → map **zoom in** ke area tersebut.
 3. Muncul **titik koordinat sejarah** → klik → **pop-up penjelasan singkat** (judul + deskripsi).
 4. Read-only untuk semua pengunjung.
 5. **Data Sprint 1:** seed manual oleh tim.
 
-### 6.3 Halaman Map 📍 (Fitur Utama)
+### 6.3 Halaman Map (Fitur Utama)
 1. Semua user melihat peta + titik budaya approved.
-2. **User verified:** klik di peta → marker + **form pop-up**: 📷 foto (wajib), 🎙️ audio (opsional — dummy), 💬 slang terkait, 📝 deskripsi, 📍 koordinat (auto). Submit → status `PENDING_REVIEW` → tampil setelah **admin approve**.
+2. **User verified:** klik di peta → marker + **form pop-up**: foto (wajib), audio (opsional — dummy), slang terkait, deskripsi, koordinat (auto). Submit → status `PENDING_REVIEW` → tampil setelah **admin approve**.
 3. User non-login/pending: hanya melihat.
 
 ### 6.4 Halaman Slang & Komunitas (Dummy)
 Muncul di navbar, konten "Coming Soon — Sprint 2". Routing & struktur disiapkan.
 
-### 6.5 Halaman Home 🏠
+### 6.5 Halaman Home
 Hero "Everyday Ethnographer", cuplikan peta, jumlah titik, CTA "Jadi Etnografer Warga", highlight titik budaya terbaru.
 
 ---
@@ -204,7 +204,7 @@ npx shadcn-vue@latest add @boldkit/select
 | Admin Dashboard | `table`, `button`, `badge` |
 | Slang/Komunitas (dummy) | `card` (coming soon placeholder) |
 
-> ⚠️ Tailwind CSS **wajib** dikonfigurasi di `apps/web`. Komponen BoldKit di-copy ke dalam project (bukan external dependency) sehingga mudah dikustomisasi sesuai kebutuhan SGZA.
+> [PERINGATAN] Tailwind CSS **wajib** dikonfigurasi di `apps/web`. Komponen BoldKit di-copy ke dalam project (bukan external dependency) sehingga mudah dikustomisasi sesuai kebutuhan SGZA.
 
 ---
 
@@ -285,18 +285,18 @@ export class TitikBudaya {
 ## 11. Checklist Kerja Sprint 1 (Deadline 3 November)
 
 ```
-☑  1. Setup monorepo (pnpm + turbo) + NestJS + MikroORM + PostGIS (SELESAI)
-☑  2. packages/shared: types User, JenisInstansi, StatusAkun, TitikBudaya (SELESAI)
-☑  3. DTO + ValidationPipe global (register, login, titik)          (SELESAI)
-☑  4. User entity + repository + auth (JWT, bcrypt)                  (SELESAI)
-☑  5. State machine status user (TRANSISI_USER)                      (SELESAI)
-☑  6. Registrasi flow: factory + upload KTP + parse NIK Surabaya     (SELESAI)
-☑  7. Login + guard cek status VERIFIED                              (SELESAI)
-☑  8. Titik sejarah seed + endpoint GET                              (SELESAI)
-☑  9. Titik budaya: POST (verified only) + GET approved              (SELESAI)
-☑ 10. State machine titik (TRANSISI_TITIK)                           (SELESAI)
-☑ 11. Frontend scaffold + BoldKit Neubrutalism + Routing 8 halaman   (SELESAI)
-☑ 12. Halaman Slang & Komunitas dummy                                (SELESAI)
+[x]  1. Setup monorepo (pnpm + turbo) + NestJS + MikroORM + PostGIS (SELESAI)
+[x]  2. packages/shared: types User, JenisInstansi, StatusAkun, TitikBudaya (SELESAI)
+[x]  3. DTO + ValidationPipe global (register, login, titik)          (SELESAI)
+[x]  4. User entity + repository + auth (JWT, bcrypt)                  (SELESAI)
+[x]  5. State machine status user (TRANSISI_USER)                      (SELESAI)
+[x]  6. Registrasi flow: factory + upload KTP + parse NIK Surabaya     (SELESAI)
+[x]  7. Login + guard cek status VERIFIED                              (SELESAI)
+[x]  8. Titik sejarah seed + endpoint GET                              (SELESAI)
+[x]  9. Titik budaya: POST (verified only) + GET approved              (SELESAI)
+[x] 10. State machine titik (TRANSISI_TITIK)                           (SELESAI)
+[x] 11. Frontend scaffold + BoldKit Neubrutalism + Routing 8 halaman   (SELESAI)
+[x] 12. Halaman Slang & Komunitas dummy                                (SELESAI)
 ```
 
 ---
@@ -310,7 +310,7 @@ export class TitikBudaya {
 | Geocoding alamat | Nominatim | 2 (bantuan verifikasi) |
 | POI sejarah / boundary | Overpass / Geofabrik | 2 (perkaya seed) |
 
-⚠️ Rate limit Nominatim (~1 req/detik) → cache; produksi besar → self-host.
+[PERINGATAN] Rate limit Nominatim (~1 req/detik) → cache; produksi besar → self-host.
 
 ---
 
@@ -334,7 +334,7 @@ export class TitikBudaya {
 
 ---
 
-## 15. Keputusan Produk Final ✅
+## 15. Keputusan Produk Final [OK]
 
 1. Backend: **NestJS + TypeScript**; Full TS end-to-end (Vue TS).
 2. Arsitektur: **Clean Architecture Lite** + monorepo (pnpm + Turborepo, shared types).

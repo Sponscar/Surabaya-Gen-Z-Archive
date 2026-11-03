@@ -62,10 +62,10 @@ function createCulturalIcon() {
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 13px;
         cursor: pointer;
         transform: rotate(2deg);
-      ">🎨</div>
+      "><span style="font-weight: 900; font-size: 12px; color: #0D0D0D;">B</span></div>
     `,
     iconSize: [30, 30],
     iconAnchor: [15, 15],
@@ -111,7 +111,7 @@ function initMap() {
       tempMarker = L.marker(e.latlng, {
         icon: L.divIcon({
           className: 'temp-marker',
-          html: `<div style="background-color: #FF3B3B; border: 2px solid #0D0D0D; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">📍</div>`,
+          html: `<div style="background-color: #FF3B3B; border: 2px solid #0D0D0D; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 14px;">+</div>`,
           iconSize: [24, 24],
           iconAnchor: [12, 12],
         }),
@@ -145,7 +145,7 @@ function renderCulturalMarkers() {
       : ''
 
     const slangHtml = point.slangTerkait
-      ? `<div style="margin: 4px 0;"><span style="background-color: #FFE500; border: 1px solid #0D0D0D; font-weight: 800; font-size: 10px; padding: 2px 6px;">🗣️ ${point.slangTerkait}</span></div>`
+      ? `<div style="margin: 4px 0;"><span style="background-color: #FFE500; border: 1px solid #0D0D0D; font-weight: 800; font-size: 10px; padding: 2px 6px;">SLANG: ${point.slangTerkait}</span></div>`
       : ''
 
     const popupHtml = `
@@ -162,7 +162,7 @@ function renderCulturalMarkers() {
         </p>
         ${slangHtml}
         <div style="font-family: monospace; font-size: 10px; font-weight: 700; color: #666; margin-top: 6px; border-top: 1px solid #ccc; padding-top: 4px;">
-          📍 ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}
+          ${point.lat.toFixed(4)}, ${point.lng.toFixed(4)}
         </div>
       </div>
     `
@@ -217,7 +217,7 @@ function renderWilayahPolygons() {
           white-space: nowrap;
           color: #0D0D0D;
           pointer-events: none;
-        ">${geo.emoji} ${geo.label.replace('Surabaya ', '')}</div>`,
+        ">${geo.label.replace('Surabaya ', '')}</div>`,
         iconAnchor: [45, 12],
       }),
       interactive: false,
@@ -348,7 +348,7 @@ onUnmounted(() => {
     <!-- API Offline Notification -->
     <div v-if="apiError" class="border-3 border-[#0D0D0D] bg-[#FFE500] p-4 shadow-[4px_4px_0px_#0D0D0D] flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">⚡</span>
+        <span class="px-2 py-1 bg-[#0D0D0D] text-[#FFE500] font-black text-xs border border-[#0D0D0D]">INFO</span>
         <div>
           <span class="font-extrabold text-sm block">Server API Backend Belum Berjalan</span>
           <span class="text-xs font-medium text-neutral-800">
@@ -362,7 +362,7 @@ onUnmounted(() => {
     <!-- Notifications / Banners -->
     <div v-if="submitSuccessMsg" class="border-3 border-[#0D0D0D] bg-[#00C566] text-[#0D0D0D] p-4 shadow-[4px_4px_0px_#0D0D0D] flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <span class="text-xl">🎉</span>
+        <span class="px-2 py-0.5 bg-[#0D0D0D] text-[#00C566] font-black text-xs border border-[#0D0D0D]">OK</span>
         <span class="font-extrabold text-sm">{{ submitSuccessMsg }}</span>
       </div>
       <button @click="submitSuccessMsg = null" class="font-black px-2 py-0.5 border-2 border-[#0D0D0D] bg-white text-xs">✕</button>
@@ -371,7 +371,7 @@ onUnmounted(() => {
     <!-- Auth State Alert -->
     <div v-if="!authStore.isAuthenticated" class="border-3 border-[#0D0D0D] bg-[#FFE500] p-4 shadow-[4px_4px_0px_#0D0D0D] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">📢</span>
+        <span class="px-2 py-1 bg-[#0D0D0D] text-[#FFE500] font-black text-xs border border-[#0D0D0D]">INFO</span>
         <div>
           <span class="font-extrabold text-sm block">Mau mengarsipkan tongkrongan atau karya budaya Gen-Z?</span>
           <span class="text-xs font-medium text-neutral-800">Daftar sebagai Everyday Ethnographer terverifikasi untuk mulai menambahkan titik di peta.</span>
@@ -387,7 +387,7 @@ onUnmounted(() => {
       </div>
     </div>
     <div v-else-if="!authStore.isVerified" class="border-3 border-[#0D0D0D] bg-[#FFE500] p-4 shadow-[4px_4px_0px_#0D0D0D] flex items-center gap-3">
-      <span class="text-2xl">⏳</span>
+      <span class="px-2 py-1 bg-[#0D0D0D] text-[#FFE500] font-black text-xs border border-[#0D0D0D]">STATUS</span>
       <div>
         <span class="font-extrabold text-sm block">Status Akun: PENDING VERIFIKASI</span>
         <span class="text-xs font-medium text-neutral-800">Dokumen KTP Anda sedang dalam proses kurasi oleh tim admin SGZA. Anda dapat menjelajahi peta, namun belum bisa menambah titik.</span>
@@ -432,9 +432,10 @@ onUnmounted(() => {
           :style="{
             backgroundColor: selectedWilayahKey === geo.key ? geo.fillColor : 'white',
           }"
-          class="px-3 py-1.5 border-3 border-[#0D0D0D] font-black text-xs uppercase tracking-wide shadow-[3px_3px_0px_#0D0D0D] transition-all duration-150 cursor-pointer select-none hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#0D0D0D] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#0D0D0D]"
+          class="px-3 py-1.5 border-3 border-[#0D0D0D] font-black text-xs uppercase tracking-wide shadow-[3px_3px_0px_#0D0D0D] transition-all duration-150 cursor-pointer select-none hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#0D0D0D] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#0D0D0D] flex items-center"
         >
-          {{ geo.emoji }} {{ geo.label.replace('Surabaya ', '') }}
+          <span class="inline-block w-2.5 h-2.5 mr-1.5 border border-[#0D0D0D]" :style="{ backgroundColor: geo.fillColor }"></span>
+          {{ geo.label.replace('Surabaya ', '') }}
           <span v-if="selectedWilayahKey === geo.key" class="ml-1">({{ filteredCulturalPoints.length }})</span>
         </button>
       </div>
@@ -461,8 +462,9 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <div v-if="submitErrorMsg" class="border-2 border-[#0D0D0D] bg-[#FF3B3B] text-white p-3 text-xs font-bold shadow-[2px_2px_0px_#0D0D0D]">
-          ⚠️ {{ submitErrorMsg }}
+        <div v-if="submitErrorMsg" class="border-2 border-[#0D0D0D] bg-[#FF3B3B] text-white p-3 text-xs font-bold shadow-[2px_2px_0px_#0D0D0D] flex items-center gap-2">
+          <span class="w-4 h-4 bg-white text-[#FF3B3B] font-black text-[10px] flex items-center justify-center">!</span>
+          <span>{{ submitErrorMsg }}</span>
         </div>
 
         <form @submit.prevent="submitTitik" class="space-y-4">
@@ -548,7 +550,7 @@ onUnmounted(() => {
 
           <!-- Audio Sprint 2 Placeholder -->
           <div class="border-2 border-dashed border-[#0D0D0D] p-2.5 bg-neutral-100 flex items-center justify-between text-neutral-500">
-            <span class="text-xs font-bold">🎙️ Rekaman Dialek Suroboyoan</span>
+            <span class="text-xs font-bold">Rekaman Audio Dialek Suroboyoan</span>
             <Badge variant="black" class="text-[9px]">SPRINT 2</Badge>
           </div>
 

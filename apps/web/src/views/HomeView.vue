@@ -149,13 +149,13 @@ onMounted(async () => {
         </p>
         <div class="flex flex-wrap gap-4 pt-4">
           <RouterLink to="/sejarah">
-            <Button variant="black" size="lg" class="text-base">🏛️ 25 TITIK SEJARAH</Button>
+            <Button variant="black" size="lg" class="text-base">25 TITIK SEJARAH</Button>
           </RouterLink>
           <RouterLink to="/map">
-            <Button variant="outline" size="lg" class="text-base">📍 JELAJAHI PETA BUDAYA</Button>
+            <Button variant="outline" size="lg" class="text-base">JELAJAHI PETA BUDAYA</Button>
           </RouterLink>
           <RouterLink to="/register">
-            <Button variant="danger" size="lg" class="text-base">✍️ DAFTAR ETNOGRAFER</Button>
+            <Button variant="danger" size="lg" class="text-base">DAFTAR ETNOGRAFER</Button>
           </RouterLink>
         </div>
       </div>
@@ -217,7 +217,12 @@ onMounted(async () => {
         >
           <div class="space-y-2">
             <div class="flex items-center justify-between">
-              <span class="text-2xl">{{ geo.emoji }}</span>
+              <span
+                :style="{ backgroundColor: geo.fillColor, color: '#0D0D0D' }"
+                class="w-7 h-7 border-2 border-[#0D0D0D] font-black text-xs flex items-center justify-center shadow-[1px_1px_0px_#0D0D0D]"
+              >
+                {{ geo.code || geo.key.substring(0, 2) }}
+              </span>
               <span
                 :style="{ backgroundColor: geo.fillColor, color: '#0D0D0D' }"
                 class="text-[10px] font-black uppercase px-2 py-0.5 border border-[#0D0D0D] shadow-[1px_1px_0px_#0D0D0D]"
@@ -317,21 +322,21 @@ onMounted(async () => {
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="border-3 border-[#0D0D0D] bg-white p-5 shadow-[4px_4px_0px_#0D0D0D] space-y-2 transition-all duration-200 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0px_#0D0D0D]">
-          <span class="text-2xl">🎨</span>
+          <Badge variant="yellow" class="text-[10px]">MURAL & SENI</Badge>
           <h4 class="font-black uppercase text-base">Spot Seni & Mural Jalanan</h4>
           <p class="text-xs font-medium text-neutral-700">
             Dokumentasi mural urban dan karya seni jalanan karya arek muda yang tersebar di sudut-sudut kota.
           </p>
         </div>
         <div class="border-3 border-[#0D0D0D] bg-white p-5 shadow-[4px_4px_0px_#0D0D0D] space-y-2 transition-all duration-200 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0px_#0D0D0D]">
-          <span class="text-2xl">☕</span>
+          <Badge variant="green" class="text-[10px]">WARKOP GIRAS</Badge>
           <h4 class="font-black uppercase text-base">Warkop Giras Legendaris</h4>
           <p class="text-xs font-medium text-neutral-700">
             Jangkar sosial pemuda Surabaya: titik cangkrukan 24 jam dengan kopi kothok dan obrolan hangat.
           </p>
         </div>
         <div class="border-3 border-[#0D0D0D] bg-white p-5 shadow-[4px_4px_0px_#0D0D0D] space-y-2 transition-all duration-200 hover:-translate-x-1 hover:-translate-y-1 hover:shadow-[7px_7px_0px_#0D0D0D]">
-          <span class="text-2xl">📍</span>
+          <Badge variant="black" class="text-[10px]">KONTRIBUSI</Badge>
           <h4 class="font-black uppercase text-base">Kontribusi Mandiri Warga</h4>
           <p class="text-xs font-medium text-neutral-700">
             Warga ber-KTP Surabaya terverifikasi dapat menandai titik koordinat dan mengunggah foto secara langsung.

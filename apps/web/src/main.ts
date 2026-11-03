@@ -14,7 +14,7 @@ app.config.errorHandler = (err, instance, info) => {
   console.error('[SGZA] Info:', info)
 }
 
-app.config.warnHandler = (msg, instance, trace) => {
+app.config.warnHandler = (msg, _instance, trace) => {
   console.warn('[SGZA] Vue Warning:', msg, trace)
 }
 

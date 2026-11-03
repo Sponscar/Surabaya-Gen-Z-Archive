@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import { RouterLink } from 'vue-router'
@@ -38,7 +37,7 @@ const previewSlangs = [
         </div>
         <p class="text-xs font-medium text-neutral-700">{{ s.arti }}</p>
         <div class="p-2 bg-[#FFFBF0] border border-[#0D0D0D] text-xs font-mono font-bold text-[#0D0D0D]">
-          🗣️ "{{ s.contoh }}"
+          "{{ s.contoh }}"
         </div>
       </div>
     </div>

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import Card from '@/components/ui/Card.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import { RouterLink } from 'vue-router'

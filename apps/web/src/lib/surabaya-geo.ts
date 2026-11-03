@@ -10,7 +10,8 @@ export interface WilayahGeo {
   label: string
   color: string
   fillColor: string
-  emoji: string
+  code: string
+  emoji?: string
   center: [number, number] // [lat, lng]
   kecamatanList: string[]
   geojson: any // GeoJSON FeatureCollection
@@ -22,7 +23,7 @@ export const SURABAYA_WILAYAH_GEO: WilayahGeo[] = [
     "label": "Surabaya Barat",
     "color": "#2E3A8C",
     "fillColor": "#5E72E4",
-    "emoji": "🔵",
+    "code": "SB",
     "center": [
       -7.275,
       112.6547
@@ -5327,7 +5328,7 @@ export const SURABAYA_WILAYAH_GEO: WilayahGeo[] = [
     "label": "Surabaya Utara",
     "color": "#831843",
     "fillColor": "#EC4899",
-    "emoji": "🩷",
+    "code": "SU",
     "center": [
       -7.225,
       112.7566
@@ -7920,7 +7921,7 @@ export const SURABAYA_WILAYAH_GEO: WilayahGeo[] = [
     "label": "Surabaya Pusat",
     "color": "#713F12",
     "fillColor": "#D4B16A",
-    "emoji": "🟤",
+    "code": "SP",
     "center": [
       -7.2602,
       112.7522
@@ -9317,7 +9318,7 @@ export const SURABAYA_WILAYAH_GEO: WilayahGeo[] = [
     "label": "Surabaya Timur",
     "color": "#854D0E",
     "fillColor": "#FACC15",
-    "emoji": "🟡",
+    "code": "ST",
     "center": [
       -7.2972,
       112.8008
@@ -11627,7 +11628,7 @@ export const SURABAYA_WILAYAH_GEO: WilayahGeo[] = [
     "label": "Surabaya Selatan",
     "color": "#991B1B",
     "fillColor": "#F87171",
-    "emoji": "🔴",
+    "code": "SS",
     "center": [
       -7.3033,
       112.7194

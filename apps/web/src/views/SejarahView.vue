@@ -43,10 +43,10 @@ function createCustomIcon(_kategori: string) {
         align-items: center;
         justify-content: center;
         font-weight: 900;
-        font-size: 14px;
+        font-size: 12px;
         cursor: pointer;
         transform: rotate(-3deg);
-      ">🏛️</div>
+      "><span style="font-weight: 900; font-size: 11px; color: #0D0D0D;">S</span></div>
     `,
     iconSize: [28, 28],
     iconAnchor: [14, 14],
@@ -128,7 +128,7 @@ function renderWilayahPolygons() {
           white-space: nowrap;
           color: #0D0D0D;
           pointer-events: none;
-        ">${geo.emoji} ${geo.label.replace('Surabaya ', '')}</div>`,
+        ">${geo.label.replace('Surabaya ', '')}</div>`,
         iconAnchor: [45, 12],
       }),
       interactive: false,
@@ -163,7 +163,7 @@ function renderMarkers() {
           ${titik.deskripsi}
         </p>
         <span style="font-family: monospace; font-size: 10px; font-weight: 700; color: #666;">
-          📍 ${titik.lat.toFixed(4)}, ${titik.lng.toFixed(4)}
+          ${titik.lat.toFixed(4)}, ${titik.lng.toFixed(4)}
         </span>
       </div>
     `
@@ -252,7 +252,7 @@ onUnmounted(() => {
     <!-- API Offline Notification -->
     <div v-if="apiError" class="border-3 border-[#0D0D0D] bg-[#FFE500] p-4 shadow-[4px_4px_0px_#0D0D0D] flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
-        <span class="text-2xl">⚡</span>
+        <span class="px-2 py-1 bg-[#0D0D0D] text-[#FFE500] font-black text-xs border border-[#0D0D0D]">INFO</span>
         <div>
           <span class="font-extrabold text-sm block">Server API Backend Belum Berjalan</span>
           <span class="text-xs font-medium text-neutral-800">
@@ -292,9 +292,10 @@ onUnmounted(() => {
           :style="{
             backgroundColor: selectedWilayahKey === geo.key ? geo.fillColor : 'white',
           }"
-          class="px-3 py-1.5 border-3 border-[#0D0D0D] font-black text-xs uppercase tracking-wide shadow-[3px_3px_0px_#0D0D0D] transition-all duration-150 cursor-pointer select-none hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#0D0D0D] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#0D0D0D]"
+          class="px-3 py-1.5 border-3 border-[#0D0D0D] font-black text-xs uppercase tracking-wide shadow-[3px_3px_0px_#0D0D0D] transition-all duration-150 cursor-pointer select-none hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[5px_5px_0px_#0D0D0D] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_#0D0D0D] flex items-center"
         >
-          {{ geo.emoji }} {{ geo.label.replace('Surabaya ', '') }}
+          <span class="inline-block w-2.5 h-2.5 mr-1.5 border border-[#0D0D0D]" :style="{ backgroundColor: geo.fillColor }"></span>
+          {{ geo.label.replace('Surabaya ', '') }}
           <span v-if="selectedWilayahKey === geo.key" class="ml-1 text-[#0D0D0D]">({{ filteredTitik.length }})</span>
         </button>
       </div>
@@ -354,7 +355,7 @@ onUnmounted(() => {
                 {{ titik.kategori }}
               </span>
               <span class="text-[10px] font-mono font-bold text-neutral-500">
-                📍 {{ titik.lat?.toFixed(3) }}, {{ titik.lng?.toFixed(3) }}
+                {{ titik.lat?.toFixed(3) }}, {{ titik.lng?.toFixed(3) }}
               </span>
             </div>
             <h4 class="font-extrabold text-sm uppercase text-[#0D0D0D]">{{ titik.namaLokasi }}</h4>

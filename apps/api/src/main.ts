@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Global ValidationPipe — validasi semua DTO secara otomatis
+  // Global ValidationPipe — validasi semua DTO secara otomatis
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,          // strip field yang tidak ada di DTO
@@ -27,7 +27,7 @@ async function bootstrap() {
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
-  console.log(`🚀 SGZA API running on http://localhost:${port}/api`);
+  console.log(`[SGZA] API running on http://localhost:${port}/api`);
 }
 
 bootstrap();
