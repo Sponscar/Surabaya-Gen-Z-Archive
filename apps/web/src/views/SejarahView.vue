@@ -19,37 +19,137 @@ const loading = ref(true)
 const apiError = ref(false)
 
 // Map API wilayah ID for filtering — keyed by NamaWilayah key
-const wilayahIdMap = ref<Record<string, string>>({})
+const wilayahIdMap = ref<Record<string, string>>({
+  BARAT: '1',
+  TIMUR: '2',
+  SELATAN: '3',
+  UTARA: '4',
+  PUSAT: '5',
+})
+
+function isPointInRing(pt: [number, number], ring: number[][]): boolean {
+  const x = pt[0], y = pt[1]
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1]
+    const xj = ring[j][0], yj = ring[j][1]
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
+function findWilayahKeyByCoords(lat: number, lng: number): string | null {
+  for (const geo of SURABAYA_WILAYAH_GEO) {
+    if (!geo.geojson || !geo.geojson.features) continue
+    for (const feat of geo.geojson.features) {
+      if (!feat.geometry) continue
+      if (feat.geometry.type === 'Polygon' && feat.geometry.coordinates?.[0]) {
+        if (isPointInRing([lng, lat], feat.geometry.coordinates[0])) {
+          return geo.key
+        }
+      } else if (feat.geometry.type === 'MultiPolygon' && feat.geometry.coordinates) {
+        for (const poly of feat.geometry.coordinates) {
+          if (poly?.[0] && isPointInRing([lng, lat], poly[0])) {
+            return geo.key
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+function matchesWilayahPoint(point: any, targetKey: string | null): boolean {
+  if (!targetKey) return true
+  const upperKey = targetKey.toUpperCase()
+  const targetId = wilayahIdMap.value[upperKey]
+
+  // 1. Cek direct wilayahId / wilayah_id / wilayahid
+  const directId = point.wilayahId ?? point.wilayah_id ?? point.wilayahid
+  if (targetId && directId !== undefined && directId !== null && String(directId) === String(targetId)) {
+    return true
+  }
+
+  // 2. Cek point.wilayah sebagai objek
+  if (point.wilayah && typeof point.wilayah === 'object') {
+    if (targetId && point.wilayah.id !== undefined && String(point.wilayah.id) === String(targetId)) {
+      return true
+    }
+    const wName = String(point.wilayah.nama || '').toUpperCase()
+    if (wName.includes(upperKey)) return true
+  }
+
+  // 3. Cek point.wilayah jika string JSON
+  if (typeof point.wilayah === 'string') {
+    try {
+      const parsed = JSON.parse(point.wilayah)
+      if (targetId && parsed.id !== undefined && String(parsed.id) === String(targetId)) return true
+      if (String(parsed.nama || '').toUpperCase().includes(upperKey)) return true
+    } catch {
+      if (point.wilayah.toUpperCase().includes(upperKey)) return true
+    }
+  }
+
+  // 4. Cek namaWilayah / wilayahNama
+  const nameCandidate = String(point.namaWilayah || point.wilayahNama || '').toUpperCase()
+  if (nameCandidate && nameCandidate.includes(upperKey)) {
+    return true
+  }
+
+  // 5. Fallback Geometris: Point-in-polygon berdasarkan koordinat (lat, lng)
+  if (typeof point.lat === 'number' && typeof point.lng === 'number') {
+    const detectedKey = findWilayahKeyByCoords(point.lat, point.lng)
+    if (detectedKey && detectedKey.toUpperCase() === upperKey) {
+      return true
+    }
+  }
+
+  return false
+}
 
 const filteredTitik = computed(() => {
   if (!selectedWilayahKey.value) return allTitikSejarah.value
-  const targetId = wilayahIdMap.value[selectedWilayahKey.value]
-  if (!targetId) return allTitikSejarah.value
-  return allTitikSejarah.value.filter((t) => t.wilayahId === targetId)
+  return allTitikSejarah.value.filter((t) => matchesWilayahPoint(t, selectedWilayahKey.value))
 })
 
-// Marker icon generator for Neubrutalism
-function createCustomIcon(_kategori: string) {
+function getCountByWilayah(key: string): number {
+  return allTitikSejarah.value.filter((t) => matchesWilayahPoint(t, key)).length
+}
+
+function getTitikFotoUrl(path?: string): string {
+  if (!path) return ''
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  if (path.startsWith('/api/uploads/titik/')) return path
+  if (path.startsWith('/uploads/titik/')) return `/api${path}`
+  if (path.startsWith('/')) return path
+  return `/api/uploads/titik/${path}`
+}
+
+// Marker icon generator for Neubrutalism - Titik Sejarah (Tugu Pahlawan / Heritage Pin)
+function createCustomIcon(_kategori?: string) {
   return L.divIcon({
-    className: 'custom-nb-marker',
+    className: 'custom-sejarah-marker-wrap',
     html: `
-      <div style="
-        background-color: #FFE500;
-        border: 2px solid #0D0D0D;
-        box-shadow: 2px 2px 0px #0D0D0D;
-        width: 28px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 900;
-        font-size: 12px;
-        cursor: pointer;
-        transform: rotate(-3deg);
-      "><span style="font-weight: 900; font-size: 11px; color: #0D0D0D;">S</span></div>
+      <div class="sgza-pin-sejarah" title="Titik Sejarah Kota">
+        <div class="sgza-pin-head">
+          <span class="sgza-pin-label">SEJARAH</span>
+          <div class="sgza-pin-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 21H19V18H5V21Z" fill="#0D0D0D"/>
+              <path d="M7 18H17V16H7V18Z" fill="#0D0D0D"/>
+              <path d="M9 16L11 4C11 3 13 3 13 4L15 16H9Z" fill="#0D0D0D"/>
+              <path d="M12 1L13 4H11L12 1Z" fill="#FF3B3B"/>
+              <line x1="12" y1="5" x2="12" y2="15" stroke="#FFE500" stroke-width="1.2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="sgza-pin-pointer"></div>
+      </div>
     `,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
+    popupAnchor: [0, -42],
   })
 }
 
@@ -151,14 +251,22 @@ function renderMarkers() {
       icon: createCustomIcon(titik.kategori),
     })
 
+    const photoHtml = (titik as any).fotoUrl
+      ? `<div style="margin-bottom: 8px; border: 2px solid #0D0D0D; overflow: hidden; height: 130px; background-color: #0D0D0D;">
+           <img src="${getTitikFotoUrl((titik as any).fotoUrl)}" alt="${titik.namaLokasi}" style="width: 100%; height: 100%; object-fit: cover; display: block;" onerror="this.onerror=null; this.parentElement.style.display='none';" />
+         </div>`
+      : ''
+
     const popupContent = `
-      <div style="font-family: inherit; padding: 4px; max-width: 240px;">
+      <div style="font-family: inherit; padding: 4px; max-width: 260px;">
+        ${photoHtml}
         <span style="display: inline-block; background-color: #0D0D0D; color: #FFE500; font-size: 10px; font-weight: 800; padding: 2px 6px; border: 1px solid #0D0D0D; text-transform: uppercase;">
-          ${titik.kategori}
+          ${titik.kategori || 'HERITAGE'}
         </span>
         <h4 style="font-size: 14px; font-weight: 800; text-transform: uppercase; margin: 6px 0 4px; color: #0D0D0D;">
           ${titik.namaLokasi}
         </h4>
+        ${titik.alamat ? `<div style="font-size: 10px; font-weight: 700; background: #FFFBF0; color: #0D0D0D; padding: 2px 4px; border: 1px solid #0D0D0D; margin-bottom: 6px; line-height: 1.3;">📍 ${titik.alamat}</div>` : ''}
         <p style="font-size: 11px; font-weight: 500; color: #333; line-height: 1.3; margin: 0 0 6px;">
           ${titik.deskripsi}
         </p>
@@ -209,12 +317,12 @@ function focusTitik(titik: TitikSejarah) {
 }
 
 // Build a map of wilayah key -> wilayah ID from API data
-function buildWilayahIdMap(apiWilayahList: Array<{ id: string; nama: string }>) {
+function buildWilayahIdMap(apiWilayahList: Array<{ id: string | number; nama: string }>) {
   const map: Record<string, string> = {}
   apiWilayahList.forEach((w) => {
-    // Match by upper-cased last word: "Surabaya Barat" -> "BARAT"
+    // Match by upper-cased last word: "Surabaya Barat" -> "BARAT" or "BARAT" -> "BARAT"
     const key = w.nama.split(' ').pop()?.toUpperCase() ?? ''
-    if (key) map[key] = w.id
+    if (key) map[key] = String(w.id)
   })
   wilayahIdMap.value = map
 }
@@ -296,24 +404,38 @@ onUnmounted(() => {
         >
           <span class="inline-block w-2.5 h-2.5 mr-1.5 border border-[#0D0D0D]" :style="{ backgroundColor: geo.fillColor }"></span>
           {{ geo.label.replace('Surabaya ', '') }}
-          <span v-if="selectedWilayahKey === geo.key" class="ml-1 text-[#0D0D0D]">({{ filteredTitik.length }})</span>
+          <span v-if="allTitikSejarah.length > 0" class="ml-1 font-mono text-[#0D0D0D]">({{ getCountByWilayah(geo.key) }})</span>
         </button>
       </div>
     </div>
 
     <!-- Wilayah Legend Bar -->
-    <div class="border-3 border-[#0D0D0D] bg-[#FFFBF0] p-3 shadow-[4px_4px_0px_#0D0D0D] flex flex-wrap items-center gap-3">
-      <span class="text-xs font-black uppercase tracking-wider text-neutral-500 mr-1">LEGENDA WILAYAH:</span>
-      <div
-        v-for="geo in SURABAYA_WILAYAH_GEO"
-        :key="geo.key"
-        class="flex items-center gap-1.5"
-      >
-        <span
-          :style="{ backgroundColor: geo.fillColor, borderColor: geo.color }"
-          class="inline-block w-4 h-4 border-2 shadow-[1px_1px_0px_#0D0D0D]"
-        ></span>
-        <span class="text-xs font-bold uppercase">{{ geo.label.replace('Surabaya ', '') }}</span>
+    <div class="border-3 border-[#0D0D0D] bg-[#FFFBF0] p-3 shadow-[4px_4px_0px_#0D0D0D] flex flex-wrap items-center justify-between gap-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-xs font-black uppercase tracking-wider text-neutral-500 mr-1">LEGENDA WILAYAH:</span>
+        <div
+          v-for="geo in SURABAYA_WILAYAH_GEO"
+          :key="geo.key"
+          class="flex items-center gap-1.5"
+        >
+          <span
+            :style="{ backgroundColor: geo.fillColor, borderColor: geo.color }"
+            class="inline-block w-4 h-4 border-2 shadow-[1px_1px_0px_#0D0D0D]"
+          ></span>
+          <span class="text-xs font-bold uppercase">{{ geo.label.replace('Surabaya ', '') }}</span>
+        </div>
+      </div>
+
+      <!-- Marker Sejarah Preview Badge -->
+      <div class="flex items-center gap-2 border-2 border-[#0D0D0D] bg-white px-2.5 py-1 shadow-[2px_2px_0px_#0D0D0D]">
+        <div class="w-5 h-5 bg-[#FFE500] border border-[#0D0D0D] flex items-center justify-center">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M5 21H19V18H5V21Z" fill="#0D0D0D"/>
+            <path d="M9 16L11 4L13 4L15 16H9Z" fill="#0D0D0D"/>
+            <path d="M12 1L13 4H11L12 1Z" fill="#FF3B3B"/>
+          </svg>
+        </div>
+        <span class="text-xs font-black uppercase tracking-wide text-[#0D0D0D]">PIN TITIK SEJARAH (HERITAGE)</span>
       </div>
     </div>
 
@@ -350,15 +472,22 @@ onUnmounted(() => {
                 : 'bg-white hover:bg-neutral-50 shadow-[2px_2px_0px_#0D0D0D]'
             ]"
           >
+            <div v-if="(titik as any).fotoUrl" class="mb-2 border-2 border-[#0D0D0D] overflow-hidden h-32 bg-neutral-900">
+              <img :src="getTitikFotoUrl((titik as any).fotoUrl)" :alt="titik.namaLokasi" class="w-full h-full object-cover" />
+            </div>
             <div class="flex items-center justify-between mb-1">
               <span class="text-[10px] font-black uppercase bg-[#0D0D0D] text-white px-1.5 py-0.5">
-                {{ titik.kategori }}
+                {{ titik.kategori || 'HERITAGE' }}
               </span>
               <span class="text-[10px] font-mono font-bold text-neutral-500">
                 {{ titik.lat?.toFixed(3) }}, {{ titik.lng?.toFixed(3) }}
               </span>
             </div>
             <h4 class="font-extrabold text-sm uppercase text-[#0D0D0D]">{{ titik.namaLokasi }}</h4>
+            <div v-if="titik.alamat" class="text-[10px] font-bold text-neutral-800 bg-[#FFFBF0] border border-[#0D0D0D] p-1 mt-1">
+              <span class="bg-[#FFE500] px-1 py-0.5 border border-[#0D0D0D] mr-1 font-black">ALAMAT</span>
+              {{ titik.alamat }}
+            </div>
             <p class="text-xs font-medium text-neutral-700 line-clamp-2 mt-1">{{ titik.deskripsi }}</p>
           </div>
 
@@ -375,6 +504,80 @@ onUnmounted(() => {
 </template>
 
 <style>
+/* Custom Sejarah Neubrutalism Pin */
+.custom-sejarah-marker-wrap {
+  background: transparent !important;
+  border: none !important;
+}
+
+.sgza-pin-sejarah {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.sgza-pin-sejarah .sgza-pin-head {
+  background-color: #FFE500;
+  border: 2.5px solid #0D0D0D;
+  box-shadow: 3px 3px 0px #0D0D0D;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5px 1px 2px;
+  box-sizing: border-box;
+  transition: all 0.15s ease;
+}
+
+.sgza-pin-sejarah .sgza-pin-label {
+  background-color: #0D0D0D;
+  color: #FFE500;
+  font-family: monospace;
+  font-size: 6.5px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 1px 2px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.sgza-pin-sejarah .sgza-pin-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+}
+
+.sgza-pin-sejarah .sgza-pin-pointer {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #0D0D0D;
+  margin-top: -1px;
+  filter: drop-shadow(2px 1px 0px rgba(13, 13, 13, 0.8));
+  transition: all 0.15s ease;
+}
+
+.sgza-pin-sejarah:hover {
+  transform: translateY(-4px) scale(1.12);
+  z-index: 9999 !important;
+}
+
+.sgza-pin-sejarah:hover .sgza-pin-head {
+  background-color: #FFF04D;
+  box-shadow: 4px 4px 0px #0D0D0D;
+}
+
 /* Neubrutalism Leaflet Popup custom override */
 .nb-leaflet-popup .leaflet-popup-content-wrapper {
   border: 3px solid #0D0D0D !important;
