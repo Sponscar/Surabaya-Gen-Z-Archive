@@ -1,0 +1,169 @@
+@import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ============================================================
+   SGZA — BoldKit Neubrutalism Design Tokens (Tailwind v4)
+   ============================================================ */
+
+@theme {
+  --color-sgza-yellow: #FFE500;
+  --color-sgza-red:    #FF3B3B;
+  --color-sgza-green:  #00C566;
+  --color-sgza-cream:  #FFFBF0;
+  --color-sgza-black:  #0D0D0D;
+  --color-sgza-white:  #FFFFFF;
+  --color-sgza-blue:   #3B82F6;
+  --color-sgza-purple: #8B5CF6;
+
+  /* Custom border width for Neubrutalism */
+  --border-width-3: 3px;
+
+  /* Custom spacing */
+  --spacing-18: 4.5rem;
+}
+
+/* Utility class: border-3 */
+.border-3 {
+  border-width: 3px;
+  border-style: solid;
+}
+.border-b-3 {
+  border-bottom-width: 3px;
+  border-bottom-style: solid;
+}
+.border-t-3 {
+  border-top-width: 3px;
+  border-top-style: solid;
+}
+.border-r-3 {
+  border-right-width: 3px;
+  border-right-style: solid;
+}
+.border-l-3 {
+  border-left-width: 3px;
+  border-left-style: solid;
+}
+.h-18 {
+  height: 4.5rem;
+}
+.decoration-3 {
+  text-decoration-thickness: 3px;
+}
+
+/* Base resets & typography */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #FFFBF0;
+  color: #0D0D0D;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+/* Custom Neubrutalism classes */
+.nb-card {
+  border: 3px solid #0D0D0D;
+  background-color: #FFFFFF;
+  box-shadow: 4px 4px 0px #0D0D0D;
+}
+
+.nb-card-yellow {
+  border: 3px solid #0D0D0D;
+  background-color: #FFE500;
+  box-shadow: 4px 4px 0px #0D0D0D;
+}
+
+.nb-card-green {
+  border: 3px solid #0D0D0D;
+  background-color: #00C566;
+  box-shadow: 4px 4px 0px #0D0D0D;
+}
+
+.nb-card-red {
+  border: 3px solid #0D0D0D;
+  background-color: #FF3B3B;
+  color: #FFFFFF;
+  box-shadow: 4px 4px 0px #0D0D0D;
+}
+
+.nb-btn {
+  border: 3px solid #0D0D0D;
+  font-weight: 800;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  transition: all 100ms ease-in-out;
+  box-shadow: 3px 3px 0px #0D0D0D;
+  user-select: none;
+}
+
+.nb-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0px #0D0D0D;
+}
+
+.nb-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0px #0D0D0D;
+}
+
+.nb-btn-primary {
+  background-color: #FFE500;
+  color: #0D0D0D;
+}
+
+.nb-btn-danger {
+  background-color: #FF3B3B;
+  color: #FFFFFF;
+}
+
+.nb-btn-success {
+  background-color: #00C566;
+  color: #0D0D0D;
+}
+
+.nb-btn-outline {
+  background-color: #FFFFFF;
+  color: #0D0D0D;
+}
+
+.nb-input {
+  border: 3px solid #0D0D0D;
+  background-color: #FFFFFF;
+  padding: 0.625rem 0.875rem;
+  font-weight: 500;
+  width: 100%;
+  box-shadow: 2px 2px 0px #0D0D0D;
+  outline: none;
+}
+
+.nb-input:focus {
+  border-color: #FFE500;
+  box-shadow: 4px 4px 0px #0D0D0D;
+}
+
+.nb-badge {
+  border: 2px solid #0D0D0D;
+  font-weight: 800;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: inline-flex;
+  align-items: center;
+}
+
+.nb-badge-yellow { background-color: #FFE500; color: #0D0D0D; }
+.nb-badge-red    { background-color: #FF3B3B; color: #FFFFFF; }
+.nb-badge-green  { background-color: #00C566; color: #0D0D0D; }
+.nb-badge-black  { background-color: #0D0D0D; color: #FFE500; }
