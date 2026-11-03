@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
@@ -14,25 +14,27 @@ const activeTab = ref<'users' | 'titik'>('users')
 
 // Users State
 interface PendingUser {
-  id: string
+  id: number | string
   namaLengkap: string
   email: string
-  nik: string
-  ktpPath: string
+  nik?: string
+  nikDecrypted?: string
+  ktpPath?: string
+  ktpUrl?: string
   whatsapp: string
   jenisInstansi: string
-  instansiDetail: Record<string, any>
+  instansiDetail?: Record<string, any>
   status: string
 }
 
 const pendingUsers = ref<PendingUser[]>([])
 const loadingUsers = ref(true)
 const selectedUser = ref<PendingUser | null>(null)
-const userActionLoading = ref<string | null>(null)
+const userActionLoading = ref<number | string | null>(null)
 
 // Titik State
 interface PendingTitik {
-  id: string
+  id: number | string
   judul: string
   deskripsi: string
   slangTerkait?: string
@@ -46,11 +48,87 @@ interface PendingTitik {
 
 const pendingTitik = ref<PendingTitik[]>([])
 const loadingTitik = ref(true)
-const titikActionLoading = ref<string | null>(null)
+const titikActionLoading = ref<number | string | null>(null)
 
 // Error / success
 const successMsg = ref<string | null>(null)
 const errorMsg = ref<string | null>(null)
+
+interface FormattedDetailItem {
+  label: string
+  value: string
+}
+
+function getOrderedInstansiDetails(detail?: Record<string, any>): FormattedDetailItem[] {
+  if (!detail || typeof detail !== 'object') return []
+
+  const items: FormattedDetailItem[] = []
+
+  // 1. Perguruan Tinggi (Urutan: Nama Perguruan Tinggi, Fakultas, Jurusan, NIM)
+  const namaPT = detail.namaPerguruanTinggi || detail.namaPT || detail.namaKampus || detail.nama
+  const fakultas = detail.fakultas
+  const jurusan = detail.jurusan
+  const nim = detail.nim
+
+  if (namaPT) items.push({ label: 'Nama Perguruan Tinggi', value: String(namaPT) })
+  if (fakultas) items.push({ label: 'Fakultas', value: String(fakultas) })
+  if (jurusan) items.push({ label: 'Jurusan', value: String(jurusan) })
+  if (nim) items.push({ label: 'NIM', value: String(nim) })
+
+  // 2. Sekolah (Urutan: Nama Sekolah, Kelas, NISN)
+  const namaSekolah = detail.namaSekolah
+  const kelas = detail.kelas
+  const nisn = detail.nisn
+
+  if (namaSekolah) items.push({ label: 'Nama Sekolah', value: String(namaSekolah) })
+  if (kelas) items.push({ label: 'Kelas', value: String(kelas) })
+  if (nisn) items.push({ label: 'NISN', value: String(nisn) })
+
+  // 3. Komunitas (Urutan: Nama Komunitas, Peran, Media Sosial)
+  const namaKomunitas = detail.namaKomunitas
+  const peran = detail.peran
+  const mediaSosial = detail.mediaSosial
+
+  if (namaKomunitas) items.push({ label: 'Nama Komunitas', value: String(namaKomunitas) })
+  if (peran) items.push({ label: 'Peran', value: String(peran) })
+  if (mediaSosial) items.push({ label: 'Media Sosial', value: String(mediaSosial) })
+
+  // 4. Lainnya (Urutan: Nama Lembaga, Deskripsi)
+  const namaLembaga = detail.namaLembaga
+  const deskripsi = detail.deskripsi
+
+  if (namaLembaga && !items.some(i => i.value === String(namaLembaga))) {
+    items.push({ label: 'Nama Lembaga', value: String(namaLembaga) })
+  }
+  if (deskripsi && !items.some(i => i.value === String(deskripsi))) {
+    items.push({ label: 'Deskripsi', value: String(deskripsi) })
+  }
+
+  // Fallback untuk atribut custom lain jika ada
+  const handledKeys = new Set([
+    'namaperguruantinggi', 'namapt', 'namakampus', 'nama',
+    'fakultas', 'jurusan', 'nim',
+    'namasekolah', 'kelas', 'nisn',
+    'namakomunitas', 'peran', 'mediasosial',
+    'namalembaga', 'deskripsi'
+  ])
+
+  for (const [k, v] of Object.entries(detail)) {
+    const normalizedKey = k.toLowerCase().replace(/[^a-z0-9]/g, '')
+    if (v && !handledKeys.has(normalizedKey)) {
+      const prettyKey = k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim()
+      items.push({ label: prettyKey, value: String(v) })
+    }
+  }
+
+  return items
+}
+
+function getKtpUrl(user: PendingUser): string {
+  const base = user.ktpUrl || (user.ktpPath ? `/api/uploads/ktp/${user.ktpPath}` : '')
+  if (!base) return ''
+  return authStore.token ? `${base}?token=${authStore.token}` : base
+}
 
 // Redirect if not admin
 onMounted(async () => {
@@ -85,7 +163,7 @@ async function loadPendingTitik() {
   }
 }
 
-async function updateUserStatus(userId: string, status: 'VERIFIED' | 'REJECTED') {
+async function updateUserStatus(userId: number | string, status: 'VERIFIED' | 'REJECTED') {
   userActionLoading.value = userId
   errorMsg.value = null
   try {
@@ -100,7 +178,7 @@ async function updateUserStatus(userId: string, status: 'VERIFIED' | 'REJECTED')
   }
 }
 
-async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED') {
+async function updateTitikStatus(titikId: number | string, status: 'APPROVED' | 'REJECTED') {
   titikActionLoading.value = titikId
   errorMsg.value = null
   try {
@@ -136,11 +214,11 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
 
     <!-- Notifications -->
     <div v-if="successMsg" class="border-3 border-[#0D0D0D] bg-[#00C566] text-[#0D0D0D] p-4 shadow-[4px_4px_0px_#0D0D0D] flex items-center justify-between">
-      <div class="flex items-center gap-2 font-extrabold text-sm">✅ {{ successMsg }}</div>
+      <div class="flex items-center gap-2 font-extrabold text-sm"><span class="px-1.5 py-0.5 bg-[#0D0D0D] text-[#00C566] text-[10px] font-black border border-[#0D0D0D]">BERHASIL</span> {{ successMsg }}</div>
       <button @click="successMsg = null" class="border-2 border-[#0D0D0D] bg-white font-black px-2 py-0.5 text-xs">✕</button>
     </div>
     <div v-if="errorMsg" class="border-3 border-[#0D0D0D] bg-[#FF3B3B] text-white p-4 shadow-[4px_4px_0px_#0D0D0D] flex items-center justify-between">
-      <div class="flex items-center gap-2 font-extrabold text-sm">⚠️ {{ errorMsg }}</div>
+      <div class="flex items-center gap-2 font-extrabold text-sm"><span class="px-1.5 py-0.5 bg-white text-[#FF3B3B] text-[10px] font-black border border-white">PERINGATAN</span> {{ errorMsg }}</div>
       <button @click="errorMsg = null" class="border-2 border-white bg-white/10 font-black px-2 py-0.5 text-xs text-white">✕</button>
     </div>
 
@@ -153,7 +231,7 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
           activeTab === 'users' ? 'bg-[#FFE500] text-[#0D0D0D]' : 'bg-white text-neutral-600 hover:bg-neutral-100'
         ]"
       >
-        👤 Verifikasi KTP
+        Verifikasi KTP
         <span v-if="pendingUsers.length > 0" class="ml-1.5 bg-[#FF3B3B] text-white text-[10px] font-black px-1.5 py-0.5 border border-[#0D0D0D]">
           {{ pendingUsers.length }}
         </span>
@@ -165,7 +243,7 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
           activeTab === 'titik' ? 'bg-[#FFE500] text-[#0D0D0D]' : 'bg-white text-neutral-600 hover:bg-neutral-100'
         ]"
       >
-        📍 Kurasi Titik Budaya
+        Kurasi Titik Budaya
         <span v-if="pendingTitik.length > 0" class="ml-1.5 bg-[#FF3B3B] text-white text-[10px] font-black px-1.5 py-0.5 border border-[#0D0D0D]">
           {{ pendingTitik.length }}
         </span>
@@ -179,14 +257,14 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
       </div>
 
       <div v-else-if="pendingUsers.length === 0" class="border-3 border-dashed border-[#0D0D0D] bg-white p-10 text-center shadow-[4px_4px_0px_#0D0D0D]">
-        <p class="text-2xl mb-2">🎉</p>
+        <div class="w-10 h-10 mx-auto mb-2 border-2 border-[#0D0D0D] bg-[#00C566] text-[#0D0D0D] font-black text-sm flex items-center justify-center">OK</div>
         <p class="font-extrabold text-neutral-700">Semua pendaftar sudah terverifikasi!</p>
         <p class="text-xs font-medium text-neutral-500 mt-1">Tidak ada antrian user berstatus PENDING.</p>
       </div>
 
       <div v-else class="space-y-4">
         <div
-          v-for="user in pendingUsers"
+          v-for="(user, index) in pendingUsers"
           :key="user.id"
           class="border-3 border-[#0D0D0D] bg-white p-5 shadow-[5px_5px_0px_#0D0D0D] space-y-4 transition-all duration-150 hover:shadow-[7px_7px_0px_#0D0D0D]"
         >
@@ -195,29 +273,32 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
             <div class="space-y-1">
               <div class="flex items-center gap-2">
                 <Badge variant="yellow" class="text-[10px]">PENDING VERIFIKASI</Badge>
-                <span class="text-xs font-mono font-bold text-neutral-400">ID: {{ user.id.slice(0, 8) }}...</span>
+                <span class="text-xs font-mono font-bold text-neutral-400">ID: #{{ index + 1 }}</span>
               </div>
               <h3 class="text-lg font-black uppercase text-[#0D0D0D]">{{ user.namaLengkap }}</h3>
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-1 text-xs font-mono mt-2">
                 <div><span class="font-black text-neutral-500 uppercase text-[10px]">Email</span><br>{{ user.email }}</div>
-                <div><span class="font-black text-neutral-500 uppercase text-[10px]">NIK (Dekripsi)</span><br>{{ user.nik }}</div>
+                <div><span class="font-black text-neutral-500 uppercase text-[10px]">NIK (Dekripsi)</span><br>{{ user.nikDecrypted || user.nik }}</div>
                 <div><span class="font-black text-neutral-500 uppercase text-[10px]">WhatsApp</span><br>{{ user.whatsapp }}</div>
                 <div><span class="font-black text-neutral-500 uppercase text-[10px]">Instansi</span><br>{{ user.jenisInstansi }}</div>
               </div>
-              <div v-if="user.instansiDetail" class="text-xs font-mono text-neutral-600 bg-[#FFFBF0] border border-[#0D0D0D] p-2 mt-1 max-w-sm">
-                <span class="font-black uppercase text-[10px] block mb-1 text-neutral-500">Detail Instansi:</span>
-                <template v-for="(val, key) in user.instansiDetail" :key="key">
-                  <span class="font-bold">{{ key }}:</span> {{ val }}&nbsp;
-                </template>
+              <div v-if="getOrderedInstansiDetails(user.instansiDetail).length > 0" class="text-xs font-mono text-neutral-800 bg-[#FFFBF0] border border-[#0D0D0D] p-2.5 mt-2 max-w-md shadow-[2px_2px_0px_#0D0D0D]">
+                <span class="font-black uppercase text-[10px] block mb-1 text-neutral-500">DETAIL INSTANSI:</span>
+                <div class="space-y-1">
+                  <div v-for="item in getOrderedInstansiDetails(user.instansiDetail)" :key="item.label" class="flex flex-wrap items-baseline gap-1">
+                    <span class="font-bold text-[#0D0D0D]">{{ item.label }}:</span>
+                    <span class="text-neutral-800">{{ item.value }}</span>
+                  </div>
+                </div>
               </div>
             </div>
 
             <!-- KTP Preview -->
-            <div v-if="user.ktpPath" class="flex-shrink-0">
+            <div v-if="getKtpUrl(user)" class="flex-shrink-0">
               <span class="text-[10px] font-black uppercase text-neutral-500 block mb-1">Foto KTP:</span>
-              <a :href="`/api/uploads/ktp/${user.ktpPath}`" target="_blank">
+              <a :href="getKtpUrl(user)" target="_blank">
                 <img
-                  :src="`/api/uploads/ktp/${user.ktpPath}`"
+                  :src="getKtpUrl(user)"
                   alt="Foto KTP"
                   class="w-36 h-24 object-cover border-2 border-[#0D0D0D] shadow-[3px_3px_0px_#0D0D0D] cursor-pointer hover:opacity-90 transition-opacity"
                 />
@@ -259,7 +340,7 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
       </div>
 
       <div v-else-if="pendingTitik.length === 0" class="border-3 border-dashed border-[#0D0D0D] bg-white p-10 text-center shadow-[4px_4px_0px_#0D0D0D]">
-        <p class="text-2xl mb-2">🗺️</p>
+        <div class="w-10 h-10 mx-auto mb-2 border-2 border-[#0D0D0D] bg-[#FFE500] text-[#0D0D0D] font-black text-xs flex items-center justify-center">PETA</div>
         <p class="font-extrabold text-neutral-700">Tidak ada titik budaya yang menunggu kurasi.</p>
         <p class="text-xs font-medium text-neutral-500 mt-1">Semua titik telah dimoderasi.</p>
       </div>
@@ -279,7 +360,7 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
             />
           </div>
           <div v-else class="border-b-2 border-[#0D0D0D] h-24 bg-[#FFFBF0] flex items-center justify-center">
-            <span class="text-4xl opacity-30">🏙️</span>
+            <span class="text-xs font-mono font-black text-neutral-400 uppercase tracking-widest">[FOTO TIDAK TERSEDIA]</span>
           </div>
 
           <div class="p-5 flex flex-col flex-1 space-y-3">
@@ -294,12 +375,12 @@ async function updateTitikStatus(titikId: string, status: 'APPROVED' | 'REJECTED
             <p class="text-xs font-medium text-neutral-700 line-clamp-3">{{ titik.deskripsi }}</p>
 
             <div v-if="titik.slangTerkait" class="text-xs font-bold bg-[#FFE500] border border-[#0D0D0D] px-2 py-1 w-fit">
-              🗣️ Slang: {{ titik.slangTerkait }}
+              Slang: {{ titik.slangTerkait }}
             </div>
 
             <div class="text-xs font-mono text-neutral-500 space-y-0.5">
-              <div>📍 Koordinat: {{ titik.lat?.toFixed(5) }}, {{ titik.lng?.toFixed(5) }}</div>
-              <div v-if="titik.user">👤 Oleh: {{ titik.user.namaLengkap }} ({{ titik.user.email }})</div>
+              <div>Koordinat: {{ titik.lat?.toFixed(5) }}, {{ titik.lng?.toFixed(5) }}</div>
+              <div v-if="titik.user">Etnografer: {{ titik.user.namaLengkap }} ({{ titik.user.email }})</div>
             </div>
 
             <!-- Action Buttons -->
