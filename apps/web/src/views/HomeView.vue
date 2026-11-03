@@ -142,7 +142,7 @@ onMounted(async () => {
           <Badge variant="red" class="text-xs uppercase tracking-wider">EVERYDAY ETHNOGRAPHER</Badge>
         </div>
         <h1 class="text-4xl sm:text-6xl font-black tracking-tight leading-tight uppercase text-[#0D0D0D]">
-          Anak muda bukan objek penelitian, tapi pelaku pengarsipan.
+          Monggo Disekecaaken
         </h1>
         <p class="text-base sm:text-lg font-bold text-[#0D0D0D]/90">
           Surabaya Gen-Z Archive (SGZA) adalah repositori digital akar rumput untuk mendokumentasikan jejak budaya kontemporer, ruang kreatif, tongkrongan, dan dialek Suroboyoan yang hidup hari ini.

@@ -29,6 +29,7 @@ Thumbs.db
 
 # Upload files (bukan untuk git)
 apps/api/uploads/
+uploads/
 
 # MikroORM cache
 apps/api/temp/
