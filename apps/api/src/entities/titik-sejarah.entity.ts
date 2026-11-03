@@ -25,6 +25,10 @@ export class TitikSejarah {
   @Property({ type: 'text' })
   deskripsi!: string;
 
+  /** Alamat lengkap lokasi sejarah */
+  @Property({ type: 'text', nullable: true })
+  alamat?: string;
+
   /**
    * PostGIS geometry Point — koordinat historis.
    * Format GeoJSON: { type: 'Point', coordinates: [lng, lat] }

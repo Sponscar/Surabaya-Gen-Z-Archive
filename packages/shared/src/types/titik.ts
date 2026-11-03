@@ -16,7 +16,9 @@ export interface TitikSejarah {
   wilayahId: string;
   namaLokasi: string;
   deskripsi: string;
-  kategori: string;
+  alamat?: string;
+  fotoUrl?: string;
+  kategori?: string;
   lat?: number;
   lng?: number;
   geojson?: GeoJSONPoint | null;
@@ -29,6 +31,7 @@ export interface TitikBudaya {
   wilayahId: string;
   judul: string;
   deskripsi?: string;
+  alamat?: string;
   fotoPath?: string;
   audioPath?: string;
   slangTerkait?: string;
@@ -49,6 +52,7 @@ export interface TitikBudayaPublic extends Omit<TitikBudaya, 'status'> {
 export interface CreateTitikBudayaPayload {
   judul: string;
   deskripsi?: string;
+  alamat?: string;
   slangTerkait?: string;
   lat: number;
   lng: number;

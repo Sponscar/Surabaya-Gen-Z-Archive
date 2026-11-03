@@ -33,6 +33,9 @@ export class TitikBudaya {
   @Property({ type: 'text', nullable: true })
   deskripsi?: string;
 
+  @Property({ type: 'text', nullable: true })
+  alamat?: string;
+
   /** Path foto wajib — disimpan di disk, serve lewat /uploads/titik/:filename */
   @Property()
   fotoPath!: string;

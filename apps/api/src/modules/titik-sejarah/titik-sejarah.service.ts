@@ -13,8 +13,10 @@ export class TitikSejarahService {
     let sql = `
       SELECT 
         ts.id,
+        ts.wilayah_id AS "wilayahId",
         ts.nama_lokasi AS "namaLokasi",
         ts.deskripsi,
+        ts.alamat,
         ts.foto_url AS "fotoUrl",
         ST_X(ts.koordinat) AS "lng",
         ST_Y(ts.koordinat) AS "lat",
