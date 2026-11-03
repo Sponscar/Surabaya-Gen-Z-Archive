@@ -8,6 +8,8 @@ import { TitikSejarahModule } from './modules/titik-sejarah/titik-sejarah.module
 import { TitikBudayaModule } from './modules/titik-budaya/titik-budaya.module';
 import { UploadsModule } from './modules/uploads/uploads.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SlangModule } from './modules/slang/slang.module';
+import { KomunitasModule } from './modules/komunitas/komunitas.module';
 import mikroOrmConfig from './config/mikro-orm.config';
 
 @Module({
@@ -26,7 +28,8 @@ import mikroOrmConfig from './config/mikro-orm.config';
     TitikBudayaModule,
     UploadsModule,
     AdminModule,
+    SlangModule,
+    KomunitasModule,
   ],
 })
 export class AppModule {}
-
