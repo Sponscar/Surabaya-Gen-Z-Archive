@@ -15330,3 +15330,36 @@ export function getWilayahStyle(key: string, selected = false) {
     fillOpacity: selected ? 0.65 : 0.40,
   };
 }
+
+export function isPointInRing(pt: [number, number], ring: number[][]): boolean {
+  const x = pt[0], y = pt[1];
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1];
+    const xj = ring[j][0], yj = ring[j][1];
+    const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+export function findWilayahKeyByCoords(lat: number, lng: number): string | null {
+  for (const geo of SURABAYA_WILAYAH_GEO) {
+    if (!geo.geojson || !geo.geojson.features) continue;
+    for (const feat of geo.geojson.features) {
+      if (!feat.geometry) continue;
+      if (feat.geometry.type === 'Polygon' && feat.geometry.coordinates?.[0]) {
+        if (isPointInRing([lng, lat], feat.geometry.coordinates[0])) {
+          return geo.key;
+        }
+      } else if (feat.geometry.type === 'MultiPolygon' && feat.geometry.coordinates) {
+        for (const poly of feat.geometry.coordinates) {
+          if (poly?.[0] && isPointInRing([lng, lat], poly[0])) {
+            return geo.key;
+          }
+        }
+      }
+    }
+  }
+  return null;
+}
