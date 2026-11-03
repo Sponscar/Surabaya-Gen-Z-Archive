@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import { useAuthStore } from '@/stores/auth'
 import { api, apiFormData } from '@/lib/api'
+import { findWilayahKeyByCoords } from '@/lib/surabaya-geo'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -284,6 +287,68 @@ async function loadTitikBudaya() {
   }
 }
 
+function getWilayahIdFromKey(key: string | null): number | null {
+  if (!key) return null
+  switch (key.toUpperCase()) {
+    case 'BARAT': return 1
+    case 'TIMUR': return 2
+    case 'SELATAN': return 3
+    case 'UTARA': return 4
+    case 'PUSAT': return 5
+    default: return null
+  }
+}
+
+function createBudayaMarkerIcon() {
+  return L.divIcon({
+    className: 'custom-cultural-marker-wrap',
+    html: `
+      <div class="sgza-pin-budaya" style="cursor: grab;" title="Titik Budaya Arek Suroboyo">
+        <div class="sgza-pin-head">
+          <span class="sgza-pin-label">BUDAYA</span>
+          <div class="sgza-pin-icon">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L14.6 9.4L22 12L14.6 14.6L12 22L9.4 14.6L2 12L9.4 9.4L12 2Z" fill="#0D0D0D"/>
+              <circle cx="12" cy="12" r="3" fill="#FFE500"/>
+              <circle cx="12" cy="12" r="1.5" fill="#00C566"/>
+            </svg>
+          </div>
+        </div>
+        <div class="sgza-pin-pointer"></div>
+      </div>
+    `,
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
+    popupAnchor: [0, -42],
+  })
+}
+
+function createSejarahMarkerIcon() {
+  return L.divIcon({
+    className: 'custom-sejarah-marker-wrap',
+    html: `
+      <div class="sgza-pin-sejarah" style="cursor: grab;" title="Titik Sejarah Kota">
+        <div class="sgza-pin-head">
+          <span class="sgza-pin-label">SEJARAH</span>
+          <div class="sgza-pin-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 21H19V18H5V21Z" fill="#0D0D0D"/>
+              <path d="M7 18H17V16H7V18Z" fill="#0D0D0D"/>
+              <path d="M9 16L11 4C11 3 13 3 13 4L15 16H9Z" fill="#0D0D0D"/>
+              <path d="M12 1L13 4H11L12 1Z" fill="#FF3B3B"/>
+              <line x1="12" y1="5" x2="12" y2="15" stroke="#FFE500" stroke-width="1.2"/>
+            </svg>
+          </div>
+        </div>
+        <div class="sgza-pin-pointer"></div>
+      </div>
+    `,
+    iconSize: [34, 42],
+    iconAnchor: [17, 42],
+    popupAnchor: [0, -42],
+  })
+}
+
 // Modal Titik Budaya
 const isTitikModalOpen = ref(false)
 const isEditTitikMode = ref(false)
@@ -299,7 +364,123 @@ const formTitikFoto = ref<File | null>(null)
 const formTitikFotoPreview = ref<string | null>(null)
 const formTitikStatus = ref<string>('APPROVED')
 
+// Titik Budaya Mini Map State
+const titikMiniMapContainer = ref<HTMLDivElement | null>(null)
+let titikMiniMapInstance: L.Map | null = null
+let titikMiniMapMarker: L.Marker | null = null
+const isTitikMiniMapVisible = ref(false)
+const isTitikSearchingAddress = ref(false)
+const titikAddressMsg = ref<string | null>(null)
+const titikAddressErr = ref<string | null>(null)
+
+function initOrUpdateTitikMiniMap(lat: number, lng: number) {
+  isTitikMiniMapVisible.value = true
+  nextTick(() => {
+    if (!titikMiniMapContainer.value) return
+    if (!titikMiniMapInstance) {
+      titikMiniMapInstance = L.map(titikMiniMapContainer.value, {
+        zoomControl: true,
+        attributionControl: false,
+      }).setView([lat, lng], 16)
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(titikMiniMapInstance)
+
+      titikMiniMapMarker = L.marker([lat, lng], {
+        draggable: true,
+        icon: createBudayaMarkerIcon(),
+      }).addTo(titikMiniMapInstance)
+
+      titikMiniMapMarker.on('dragend', () => {
+        if (!titikMiniMapMarker) return
+        const pos = titikMiniMapMarker.getLatLng()
+        formTitikLat.value = parseFloat(pos.lat.toFixed(6))
+        formTitikLng.value = parseFloat(pos.lng.toFixed(6))
+        const key = findWilayahKeyByCoords(formTitikLat.value, formTitikLng.value)
+        const id = getWilayahIdFromKey(key)
+        if (id) formTitikWilayahId.value = id
+      })
+
+      titikMiniMapInstance.on('click', (e: L.LeafletMouseEvent) => {
+        formTitikLat.value = parseFloat(e.latlng.lat.toFixed(6))
+        formTitikLng.value = parseFloat(e.latlng.lng.toFixed(6))
+        titikMiniMapMarker?.setLatLng(e.latlng)
+        const key = findWilayahKeyByCoords(formTitikLat.value, formTitikLng.value)
+        const id = getWilayahIdFromKey(key)
+        if (id) formTitikWilayahId.value = id
+      })
+    } else {
+      titikMiniMapInstance.setView([lat, lng], 16)
+      titikMiniMapMarker?.setLatLng([lat, lng])
+      titikMiniMapInstance.invalidateSize()
+    }
+    setTimeout(() => {
+      titikMiniMapInstance?.invalidateSize()
+    }, 150)
+  })
+}
+
+function destroyTitikMiniMap() {
+  if (titikMiniMapInstance) {
+    titikMiniMapInstance.remove()
+    titikMiniMapInstance = null
+    titikMiniMapMarker = null
+  }
+  isTitikMiniMapVisible.value = false
+  titikAddressMsg.value = null
+  titikAddressErr.value = null
+}
+
+async function searchTitikAddress() {
+  if (!formTitikAlamat.value.trim()) {
+    titikAddressErr.value = 'Ketik alamat terlebih dahulu untuk mencari titik koordinat.'
+    return
+  }
+  isTitikSearchingAddress.value = true
+  titikAddressErr.value = null
+  titikAddressMsg.value = null
+
+  try {
+    const query = formTitikAlamat.value.toLowerCase().includes('surabaya')
+      ? formTitikAlamat.value
+      : `${formTitikAlamat.value}, Surabaya, Jawa Timur`
+
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=id`,
+      { headers: { Accept: 'application/json' } },
+    )
+    if (res.ok) {
+      const results = await res.json()
+      if (results && results.length > 0) {
+        const item = results[0]
+        const lat = parseFloat(parseFloat(item.lat).toFixed(6))
+        const lng = parseFloat(parseFloat(item.lon).toFixed(6))
+        formTitikLat.value = lat
+        formTitikLng.value = lng
+
+        const detectedKey = findWilayahKeyByCoords(lat, lng)
+        const detectedId = getWilayahIdFromKey(detectedKey)
+        if (detectedId) formTitikWilayahId.value = detectedId
+
+        initOrUpdateTitikMiniMap(lat, lng)
+        titikAddressMsg.value = 'Titik lokasi berhasil ditemukan di peta!'
+      } else {
+        titikAddressErr.value = 'Alamat tidak ditemukan di peta Surabaya. Coba gunakan nama jalan/gedung yang lebih spesifik.'
+      }
+    } else {
+      titikAddressErr.value = 'Layanan pencarian peta sedang sibuk. Coba lagi.'
+    }
+  } catch (err) {
+    console.warn('Geocoding error:', err)
+    titikAddressErr.value = 'Gagal mencari koordinat alamat. Periksa koneksi internet.'
+  } finally {
+    isTitikSearchingAddress.value = false
+  }
+}
+
 function openCreateTitikModal() {
+  destroyTitikMiniMap()
   isEditTitikMode.value = false
   titikFormId.value = null
   formTitikJudul.value = ''
@@ -316,6 +497,7 @@ function openCreateTitikModal() {
 }
 
 function openEditTitikModal(item: TitikBudayaItem) {
+  destroyTitikMiniMap()
   isEditTitikMode.value = true
   titikFormId.value = item.id
   formTitikJudul.value = item.judul
@@ -329,6 +511,9 @@ function openEditTitikModal(item: TitikBudayaItem) {
   formTitikFotoPreview.value = item.fotoPath ? getTitikFotoUrl(item.fotoPath) : null
   formTitikStatus.value = item.status || 'APPROVED'
   isTitikModalOpen.value = true
+  if (typeof item.lat === 'number' && typeof item.lng === 'number') {
+    initOrUpdateTitikMiniMap(item.lat, item.lng)
+  }
 }
 
 function handleTitikFotoChange(e: Event) {
@@ -340,8 +525,8 @@ function handleTitikFotoChange(e: Event) {
 }
 
 async function saveTitikBudaya() {
-  if (!formTitikJudul.value || !formTitikDeskripsi.value) {
-    showError('Judul dan Deskripsi wajib diisi.')
+  if (!formTitikJudul.value || !formTitikDeskripsi.value || !formTitikAlamat.value.trim()) {
+    showError('Judul, Deskripsi, dan Alamat Lengkap wajib diisi.')
     return
   }
 
@@ -465,6 +650,121 @@ const formSejarahLng = ref<number>(112.7521)
 const formSejarahFoto = ref<File | null>(null)
 const formSejarahFotoPreview = ref<string | null>(null)
 
+// Titik Sejarah Mini Map State
+const sejarahMiniMapContainer = ref<HTMLDivElement | null>(null)
+let sejarahMiniMapInstance: L.Map | null = null
+let sejarahMiniMapMarker: L.Marker | null = null
+const isSejarahMiniMapVisible = ref(false)
+const isSejarahSearchingAddress = ref(false)
+const sejarahAddressMsg = ref<string | null>(null)
+const sejarahAddressErr = ref<string | null>(null)
+
+function initOrUpdateSejarahMiniMap(lat: number, lng: number) {
+  isSejarahMiniMapVisible.value = true
+  nextTick(() => {
+    if (!sejarahMiniMapContainer.value) return
+    if (!sejarahMiniMapInstance) {
+      sejarahMiniMapInstance = L.map(sejarahMiniMapContainer.value, {
+        zoomControl: true,
+        attributionControl: false,
+      }).setView([lat, lng], 16)
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(sejarahMiniMapInstance)
+
+      sejarahMiniMapMarker = L.marker([lat, lng], {
+        draggable: true,
+        icon: createSejarahMarkerIcon(),
+      }).addTo(sejarahMiniMapInstance)
+
+      sejarahMiniMapMarker.on('dragend', () => {
+        if (!sejarahMiniMapMarker) return
+        const pos = sejarahMiniMapMarker.getLatLng()
+        formSejarahLat.value = parseFloat(pos.lat.toFixed(6))
+        formSejarahLng.value = parseFloat(pos.lng.toFixed(6))
+        const key = findWilayahKeyByCoords(formSejarahLat.value, formSejarahLng.value)
+        const id = getWilayahIdFromKey(key)
+        if (id) formSejarahWilayahId.value = id
+      })
+
+      sejarahMiniMapInstance.on('click', (e: L.LeafletMouseEvent) => {
+        formSejarahLat.value = parseFloat(e.latlng.lat.toFixed(6))
+        formSejarahLng.value = parseFloat(e.latlng.lng.toFixed(6))
+        sejarahMiniMapMarker?.setLatLng(e.latlng)
+        const key = findWilayahKeyByCoords(formSejarahLat.value, formSejarahLng.value)
+        const id = getWilayahIdFromKey(key)
+        if (id) formSejarahWilayahId.value = id
+      })
+    } else {
+      sejarahMiniMapInstance.setView([lat, lng], 16)
+      sejarahMiniMapMarker?.setLatLng([lat, lng])
+      sejarahMiniMapInstance.invalidateSize()
+    }
+    setTimeout(() => {
+      sejarahMiniMapInstance?.invalidateSize()
+    }, 150)
+  })
+}
+
+function destroySejarahMiniMap() {
+  if (sejarahMiniMapInstance) {
+    sejarahMiniMapInstance.remove()
+    sejarahMiniMapInstance = null
+    sejarahMiniMapMarker = null
+  }
+  isSejarahMiniMapVisible.value = false
+  sejarahAddressMsg.value = null
+  sejarahAddressErr.value = null
+}
+
+async function searchSejarahAddress() {
+  if (!formSejarahAlamat.value.trim()) {
+    sejarahAddressErr.value = 'Ketik alamat terlebih dahulu untuk mencari titik koordinat.'
+    return
+  }
+  isSejarahSearchingAddress.value = true
+  sejarahAddressErr.value = null
+  sejarahAddressMsg.value = null
+
+  try {
+    const query = formSejarahAlamat.value.toLowerCase().includes('surabaya')
+      ? formSejarahAlamat.value
+      : `${formSejarahAlamat.value}, Surabaya, Jawa Timur`
+
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&accept-language=id`,
+      { headers: { Accept: 'application/json' } },
+    )
+    if (res.ok) {
+      const results = await res.json()
+      if (results && results.length > 0) {
+        const item = results[0]
+        const lat = parseFloat(parseFloat(item.lat).toFixed(6))
+        const lng = parseFloat(parseFloat(item.lon).toFixed(6))
+        formSejarahLat.value = lat
+        formSejarahLng.value = lng
+
+        const detectedKey = findWilayahKeyByCoords(lat, lng)
+        const detectedId = getWilayahIdFromKey(detectedKey)
+        if (detectedId) formSejarahWilayahId.value = detectedId
+
+        initOrUpdateSejarahMiniMap(lat, lng)
+        sejarahAddressMsg.value = 'Titik lokasi sejarah berhasil ditemukan di peta!'
+      } else {
+        sejarahAddressErr.value = 'Alamat tidak ditemukan di peta Surabaya. Coba gunakan nama jalan/gedung yang lebih spesifik.'
+      }
+    } else {
+      sejarahAddressErr.value = 'Layanan pencarian peta sedang sibuk. Coba lagi.'
+    }
+  } catch (err) {
+    console.warn('Geocoding error:', err)
+    sejarahAddressErr.value = 'Gagal mencari koordinat alamat. Periksa koneksi internet.'
+  } finally {
+    isSejarahSearchingAddress.value = false
+  }
+}
+
 function handleSejarahFotoChange(e: Event) {
   const target = e.target as HTMLInputElement
   if (target.files && target.files[0]) {
@@ -474,6 +774,7 @@ function handleSejarahFotoChange(e: Event) {
 }
 
 function openCreateSejarahModal() {
+  destroySejarahMiniMap()
   isEditSejarahMode.value = false
   sejarahFormId.value = null
   formSejarahNama.value = ''
@@ -488,6 +789,7 @@ function openCreateSejarahModal() {
 }
 
 function openEditSejarahModal(item: TitikSejarahItem) {
+  destroySejarahMiniMap()
   isEditSejarahMode.value = true
   sejarahFormId.value = item.id
   formSejarahNama.value = item.namaLokasi
@@ -499,11 +801,14 @@ function openEditSejarahModal(item: TitikSejarahItem) {
   formSejarahFoto.value = null
   formSejarahFotoPreview.value = item.fotoUrl ? getTitikFotoUrl(item.fotoUrl) : null
   isSejarahModalOpen.value = true
+  if (typeof item.lat === 'number' && typeof item.lng === 'number') {
+    initOrUpdateSejarahMiniMap(item.lat, item.lng)
+  }
 }
 
 async function saveTitikSejarah() {
-  if (!formSejarahNama.value || !formSejarahDeskripsi.value) {
-    showError('Nama Lokasi dan Deskripsi wajib diisi.')
+  if (!formSejarahNama.value || !formSejarahDeskripsi.value || !formSejarahAlamat.value.trim()) {
+    showError('Nama Lokasi, Deskripsi, dan Alamat Lengkap wajib diisi.')
     return
   }
   sejarahActionLoading.value = sejarahFormId.value || 999999
@@ -801,6 +1106,11 @@ onMounted(async () => {
     loadSlang(),
     loadKomunitas(),
   ])
+})
+
+onUnmounted(() => {
+  destroyTitikMiniMap()
+  destroySejarahMiniMap()
 })
 </script>
 
@@ -1406,7 +1716,7 @@ onMounted(async () => {
               {{ isEditTitikMode ? 'Edit Titik Budaya' : 'Tambah Titik Budaya' }}
             </h3>
           </div>
-          <button @click="isTitikModalOpen = false" class="border-2 border-[#0D0D0D] bg-white font-black px-2 py-0.5 cursor-pointer">✕</button>
+          <button @click="destroyTitikMiniMap(); isTitikModalOpen = false" class="border-2 border-[#0D0D0D] bg-white font-black px-2 py-0.5 cursor-pointer">✕</button>
         </div>
 
         <form @submit.prevent="saveTitikBudaya" class="space-y-3">
@@ -1425,17 +1735,64 @@ onMounted(async () => {
             ></textarea>
           </div>
 
-          <div>
-            <label class="block text-xs font-black uppercase mb-1">Alamat Lengkap</label>
-            <Input v-model="formTitikAlamat" placeholder="Contoh: Jl. Embong Malang No. 12" />
+          <!-- Alamat / Patokan Lokasi (Wajib, tepat di atas Wilayah Surabaya) -->
+          <div class="space-y-1">
+            <label class="block text-xs font-black uppercase">
+              Alamat Lengkap / Patokan Lokasi <span class="text-[#FF3B3B]">*</span>
+            </label>
+            <textarea
+              v-model="formTitikAlamat"
+              rows="2"
+              class="border-3 border-[#0D0D0D] bg-white w-full p-2 font-medium text-xs shadow-[2px_2px_0px_#0D0D0D] outline-none"
+              placeholder="Contoh: Jl. Embong Malang No. 12, Genteng, Surabaya"
+              required
+            ></textarea>
+            <div class="flex items-center justify-between gap-2 pt-0.5">
+              <span class="text-[10px] text-neutral-500 font-medium">Ketik alamat lalu klik cari untuk menemukan titik lokasi di peta.</span>
+              <button
+                type="button"
+                @click="searchTitikAddress"
+                :disabled="isTitikSearchingAddress || !formTitikAlamat"
+                class="border-2 border-[#0D0D0D] bg-[#FFE500] text-[#0D0D0D] font-black text-[10px] uppercase px-2.5 py-1 shadow-[2px_2px_0px_#0D0D0D] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap"
+              >
+                {{ isTitikSearchingAddress ? 'Mencari...' : 'CARI DI PETA ➔' }}
+              </button>
+            </div>
+            <div v-if="titikAddressMsg" class="text-[10px] font-bold text-[#0D0D0D] bg-[#00C566] px-2 py-0.5 border border-[#0D0D0D]">
+              {{ titikAddressMsg }}
+            </div>
+            <div v-if="titikAddressErr" class="text-[10px] font-bold text-white bg-[#FF3B3B] px-2 py-0.5 border border-[#0D0D0D]">
+              {{ titikAddressErr }}
+            </div>
+          </div>
+
+          <!-- Peta Mini & Titik Koordinat Titik Budaya -->
+          <div v-show="isTitikMiniMapVisible || (formTitikLat !== null && formTitikLng !== null)" class="border-2 border-[#0D0D0D] bg-[#FFFBF0] p-2.5 space-y-2 shadow-[2px_2px_0px_#0D0D0D]">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <span class="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 text-[#0D0D0D]">
+                <span class="inline-block w-2.5 h-2.5 bg-[#00C566] border border-[#0D0D0D]"></span>
+                PETA TITIK LOKASI & KOORDINAT
+              </span>
+              <span class="font-mono font-black text-[10px] bg-[#0D0D0D] text-[#FFE500] px-1.5 py-0.5 border border-[#0D0D0D]">
+                Lat: {{ formTitikLat?.toFixed(6) }}, Lng: {{ formTitikLng?.toFixed(6) }}
+              </span>
+            </div>
+            <div
+              ref="titikMiniMapContainer"
+              class="w-full h-44 border-2 border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D] relative z-0 bg-neutral-200"
+            ></div>
+            <p class="text-[10px] text-neutral-600 font-bold leading-tight">
+              💡 Geser pin (drag) atau klik peta di atas untuk mengoreksi posisi koordinat & auto-detect wilayah.
+            </p>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div>
-              <label class="block text-xs font-black uppercase mb-1">Wilayah Surabaya</label>
+              <label class="block text-xs font-black uppercase mb-1">Wilayah Surabaya <span class="text-[#FF3B3B]">*</span></label>
               <select
                 v-model="formTitikWilayahId"
                 class="border-3 border-[#0D0D0D] bg-white w-full p-2 font-bold text-xs shadow-[2px_2px_0px_#0D0D0D] outline-none"
+                required
               >
                 <option :value="1">BARAT</option>
                 <option :value="2">TIMUR</option>
@@ -1512,7 +1869,7 @@ onMounted(async () => {
           </div>
 
           <div class="flex items-center justify-end gap-3 pt-3 border-t-2 border-[#0D0D0D]">
-            <Button type="button" variant="outline" size="sm" @click="isTitikModalOpen = false">Batal</Button>
+            <Button type="button" variant="outline" size="sm" @click="destroyTitikMiniMap(); isTitikModalOpen = false">Batal</Button>
             <Button type="submit" variant="primary" size="sm">Simpan Titik Budaya</Button>
           </div>
         </form>
@@ -1531,7 +1888,7 @@ onMounted(async () => {
               {{ isEditSejarahMode ? 'Edit Titik Sejarah' : 'Tambah Titik Sejarah' }}
             </h3>
           </div>
-          <button @click="isSejarahModalOpen = false" class="border-2 border-[#0D0D0D] bg-white font-black px-2 py-0.5 cursor-pointer">✕</button>
+          <button @click="destroySejarahMiniMap(); isSejarahModalOpen = false" class="border-2 border-[#0D0D0D] bg-white font-black px-2 py-0.5 cursor-pointer">✕</button>
         </div>
 
         <form @submit.prevent="saveTitikSejarah" class="space-y-3">
@@ -1550,11 +1907,63 @@ onMounted(async () => {
             ></textarea>
           </div>
 
+          <!-- Alamat Lengkap (Wajib, tepat di atas Wilayah Surabaya) -->
+          <div class="space-y-1">
+            <label class="block text-xs font-black uppercase">
+              Alamat Lengkap <span class="text-[#FF3B3B]">*</span>
+            </label>
+            <textarea
+              v-model="formSejarahAlamat"
+              rows="2"
+              class="border-3 border-[#0D0D0D] bg-white w-full p-2 font-medium text-xs shadow-[2px_2px_0px_#0D0D0D] outline-none"
+              placeholder="Contoh: Jl. Pemuda No. 39, Genteng, Surabaya"
+              required
+            ></textarea>
+            <div class="flex items-center justify-between gap-2 pt-0.5">
+              <span class="text-[10px] text-neutral-500 font-medium">Ketik alamat lalu klik cari untuk menemukan titik sejarah di peta.</span>
+              <button
+                type="button"
+                @click="searchSejarahAddress"
+                :disabled="isSejarahSearchingAddress || !formSejarahAlamat"
+                class="border-2 border-[#0D0D0D] bg-[#FFE500] text-[#0D0D0D] font-black text-[10px] uppercase px-2.5 py-1 shadow-[2px_2px_0px_#0D0D0D] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 active:shadow-none transition-all disabled:opacity-50 cursor-pointer whitespace-nowrap"
+              >
+                {{ isSejarahSearchingAddress ? 'Mencari...' : 'CARI DI PETA ➔' }}
+              </button>
+            </div>
+            <div v-if="sejarahAddressMsg" class="text-[10px] font-bold text-[#0D0D0D] bg-[#00C566] px-2 py-0.5 border border-[#0D0D0D]">
+              {{ sejarahAddressMsg }}
+            </div>
+            <div v-if="sejarahAddressErr" class="text-[10px] font-bold text-white bg-[#FF3B3B] px-2 py-0.5 border border-[#0D0D0D]">
+              {{ sejarahAddressErr }}
+            </div>
+          </div>
+
+          <!-- Peta Mini & Titik Koordinat Titik Sejarah -->
+          <div v-show="isSejarahMiniMapVisible || (formSejarahLat !== null && formSejarahLng !== null)" class="border-2 border-[#0D0D0D] bg-[#FFFBF0] p-2.5 space-y-2 shadow-[2px_2px_0px_#0D0D0D]">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <span class="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 text-[#0D0D0D]">
+                <span class="inline-block w-2.5 h-2.5 bg-[#FFE500] border border-[#0D0D0D]"></span>
+                PETA TITIK LOKASI & KOORDINAT
+              </span>
+              <span class="font-mono font-black text-[10px] bg-[#0D0D0D] text-[#FFE500] px-1.5 py-0.5 border border-[#0D0D0D]">
+                Lat: {{ formSejarahLat?.toFixed(6) }}, Lng: {{ formSejarahLng?.toFixed(6) }}
+              </span>
+            </div>
+            <div
+              ref="sejarahMiniMapContainer"
+              class="w-full h-44 border-2 border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D] relative z-0 bg-neutral-200"
+            ></div>
+            <p class="text-[10px] text-neutral-600 font-bold leading-tight">
+              💡 Geser pin (drag) atau klik peta di atas untuk mengoreksi posisi koordinat & auto-detect wilayah.
+            </p>
+          </div>
+
           <div>
-            <label class="block text-xs font-black uppercase mb-1">Wilayah Surabaya</label>
+            <label class="block text-xs font-black uppercase mb-1">Wilayah Surabaya <span class="text-[#FF3B3B]">*</span></label>
             <select
               v-model="formSejarahWilayahId"
               class="border-3 border-[#0D0D0D] bg-white w-full p-2 font-bold text-xs shadow-[2px_2px_0px_#0D0D0D] outline-none"
+              required
             >
               <option :value="1">BARAT</option>
               <option :value="2">TIMUR</option>
@@ -1573,11 +1982,6 @@ onMounted(async () => {
               <label class="block text-xs font-black uppercase mb-1">Longitude</label>
               <Input v-model.number="formSejarahLng" type="number" step="any" required />
             </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-black uppercase mb-1">Alamat Lengkap</label>
-            <Input v-model="formSejarahAlamat" placeholder="Contoh: Jl. Pemuda No. 39, Genteng, Surabaya" />
           </div>
 
           <!-- File Foto Dokumentasi -->
@@ -1619,7 +2023,7 @@ onMounted(async () => {
           </div>
 
           <div class="flex items-center justify-end gap-3 pt-3 border-t-2 border-[#0D0D0D]">
-            <Button type="button" variant="outline" size="sm" @click="isSejarahModalOpen = false">Batal</Button>
+            <Button type="button" variant="outline" size="sm" @click="destroySejarahMiniMap(); isSejarahModalOpen = false">Batal</Button>
             <Button type="submit" variant="primary" size="sm">Simpan Titik Sejarah</Button>
           </div>
         </form>
@@ -1835,3 +2239,104 @@ onMounted(async () => {
 
   </div>
 </template>
+
+<style>
+.custom-cultural-marker-wrap,
+.custom-sejarah-marker-wrap {
+  background: transparent !important;
+  border: none !important;
+}
+
+.sgza-pin-budaya,
+.sgza-pin-sejarah {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+.sgza-pin-budaya .sgza-pin-head {
+  background-color: #00C566;
+  border: 2.5px solid #0D0D0D;
+  box-shadow: 3px 3px 0px #0D0D0D;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5px 1px 2px;
+  box-sizing: border-box;
+}
+
+.sgza-pin-sejarah .sgza-pin-head {
+  background-color: #FFE500;
+  border: 2.5px solid #0D0D0D;
+  box-shadow: 3px 3px 0px #0D0D0D;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5px 1px 2px;
+  box-sizing: border-box;
+}
+
+.sgza-pin-budaya .sgza-pin-label {
+  background-color: #0D0D0D;
+  color: #00C566;
+  font-family: monospace;
+  font-size: 6.5px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 1px 2px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.sgza-pin-sejarah .sgza-pin-label {
+  background-color: #0D0D0D;
+  color: #FFE500;
+  font-family: monospace;
+  font-size: 6.5px;
+  font-weight: 900;
+  line-height: 1;
+  padding: 1px 2px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.sgza-pin-budaya .sgza-pin-icon,
+.sgza-pin-sejarah .sgza-pin-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  width: 100%;
+}
+
+.sgza-pin-budaya .sgza-pin-pointer,
+.sgza-pin-sejarah .sgza-pin-pointer {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #0D0D0D;
+  margin-top: -1px;
+  filter: drop-shadow(2px 1px 0px rgba(13, 13, 13, 0.8));
+}
+
+.sgza-pin-budaya:hover,
+.sgza-pin-sejarah:hover {
+  transform: translateY(-3px) scale(1.1);
+  z-index: 9999 !important;
+}
+</style>

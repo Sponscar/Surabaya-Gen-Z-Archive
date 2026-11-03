@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { RouterLink } from 'vue-router'
 import L from 'leaflet'
 import Button from '@/components/ui/Button.vue'
@@ -105,6 +105,12 @@ const geocodeError = ref<string | null>(null)
 const isSearchingAddress = ref(false)
 const addressSearchMsg = ref<string | null>(null)
 
+// Modal Mini Map State
+const miniMapContainer = ref<HTMLDivElement | null>(null)
+let miniMapInstance: L.Map | null = null
+let miniMapMarker: L.Marker | null = null
+const showMiniMap = ref(false)
+
 // Form Fields
 const formJudul = ref('')
 const formDeskripsi = ref('')
@@ -186,12 +192,7 @@ function initMap() {
       tempMarker.setLatLng(e.latlng)
     } else {
       tempMarker = L.marker(e.latlng, {
-        icon: L.divIcon({
-          className: 'temp-marker',
-          html: `<div style="background-color: #FF3B3B; border: 2px solid #0D0D0D; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 14px;">+</div>`,
-          iconSize: [24, 24],
-          iconAnchor: [12, 12],
-        }),
+        icon: createCulturalIcon(),
       }).addTo(mapInstance!)
     }
 
@@ -200,7 +201,63 @@ function initMap() {
 
     isModalOpen.value = true
     fetchAddressFromCoords(formLat.value, formLng.value)
+    initOrUpdateModalMiniMap(formLat.value, formLng.value)
   })
+}
+
+function initOrUpdateModalMiniMap(lat: number, lng: number) {
+  showMiniMap.value = true
+  nextTick(() => {
+    if (!miniMapContainer.value) return
+    if (!miniMapInstance) {
+      miniMapInstance = L.map(miniMapContainer.value, {
+        zoomControl: true,
+        attributionControl: false,
+      }).setView([lat, lng], 16)
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+      }).addTo(miniMapInstance)
+
+      miniMapMarker = L.marker([lat, lng], {
+        draggable: true,
+        icon: createCulturalIcon(),
+      }).addTo(miniMapInstance)
+
+      miniMapMarker.on('dragend', () => {
+        if (!miniMapMarker) return
+        const pos = miniMapMarker.getLatLng()
+        formLat.value = parseFloat(pos.lat.toFixed(6))
+        formLng.value = parseFloat(pos.lng.toFixed(6))
+        autoDetectAndSetWilayah(formLat.value, formLng.value)
+        if (tempMarker) tempMarker.setLatLng(pos)
+      })
+
+      miniMapInstance.on('click', (e: L.LeafletMouseEvent) => {
+        formLat.value = parseFloat(e.latlng.lat.toFixed(6))
+        formLng.value = parseFloat(e.latlng.lng.toFixed(6))
+        miniMapMarker?.setLatLng(e.latlng)
+        autoDetectAndSetWilayah(formLat.value, formLng.value)
+        if (tempMarker) tempMarker.setLatLng(e.latlng)
+      })
+    } else {
+      miniMapInstance.setView([lat, lng], 16)
+      miniMapMarker?.setLatLng([lat, lng])
+      miniMapInstance.invalidateSize()
+    }
+    setTimeout(() => {
+      miniMapInstance?.invalidateSize()
+    }, 150)
+  })
+}
+
+function destroyModalMiniMap() {
+  if (miniMapInstance) {
+    miniMapInstance.remove()
+    miniMapInstance = null
+    miniMapMarker = null
+  }
+  showMiniMap.value = false
 }
 
 function renderCulturalMarkers() {
@@ -472,18 +529,16 @@ async function searchCoordsFromAddress() {
           tempMarker.setLatLng(latlng)
         } else if (mapInstance) {
           tempMarker = L.marker(latlng, {
-            icon: L.divIcon({
-              className: 'temp-marker',
-              html: `<div style="background-color: #FF3B3B; border: 2px solid #0D0D0D; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 14px;">+</div>`,
-              iconSize: [24, 24],
-              iconAnchor: [12, 12],
-            }),
+            icon: createCulturalIcon(),
           }).addTo(mapInstance)
         }
 
         if (mapInstance) {
           mapInstance.setView(latlng, 16)
         }
+
+        autoDetectAndSetWilayah(lat, lng)
+        initOrUpdateModalMiniMap(lat, lng)
 
         addressSearchMsg.value = 'Titik koordinat berhasil disesuaikan dengan alamat!'
       } else {
@@ -521,12 +576,7 @@ function getCurrentLocation() {
         tempMarker.setLatLng(latlng)
       } else {
         tempMarker = L.marker(latlng, {
-          icon: L.divIcon({
-            className: 'temp-marker',
-            html: `<div style="background-color: #FF3B3B; border: 2px solid #0D0D0D; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 900; font-size: 14px;">+</div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12],
-          }),
+          icon: createCulturalIcon(),
         }).addTo(mapInstance!)
       }
 
@@ -542,8 +592,9 @@ function getCurrentLocation() {
       isGettingLocation.value = false
       isModalOpen.value = true
 
-      // Ambil dan tampilkan alamat dari lokasi saat ini
+      // Ambil dan tampilkan alamat dari lokasi saat ini & init mini map
       await fetchAddressFromCoords(lat, lng)
+      initOrUpdateModalMiniMap(lat, lng)
     },
     (error) => {
       isGettingLocation.value = false
@@ -576,6 +627,7 @@ function removeFoto() {
 
 function closeModal() {
   isModalOpen.value = false
+  destroyModalMiniMap()
   if (tempMarker && mapInstance) {
     mapInstance.removeLayer(tempMarker)
     tempMarker = null
@@ -592,8 +644,8 @@ function closeModal() {
 }
 
 async function submitTitik() {
-  if (!formJudul.value || !formDeskripsi.value || !formWilayahId.value || formLat.value === null || formLng.value === null) {
-    submitErrorMsg.value = 'Harap isi semua kolom wajib.'
+  if (!formJudul.value || !formDeskripsi.value || !formWilayahId.value || !formAlamat.value.trim() || formLat.value === null || formLng.value === null) {
+    submitErrorMsg.value = 'Harap isi semua kolom wajib (termasuk Alamat / Patokan Lokasi).'
     return
   }
 
@@ -946,22 +998,11 @@ onUnmounted(() => {
             <div v-if="geoError" class="text-[10px] font-bold text-white bg-[#FF3B3B] px-1.5 py-0.5 border border-[#0D0D0D]">{{ geoError }}</div>
           </div>
 
-          <!-- Wilayah -->
-          <div class="space-y-1">
-            <label class="block text-xs font-black uppercase">Wilayah Surabaya <span class="text-[#FF3B3B]">*</span></label>
-            <select
-              v-model="formWilayahId"
-              class="border-3 border-[#0D0D0D] bg-white w-full p-2.5 font-bold text-sm shadow-[2px_2px_0px_#0D0D0D] outline-none"
-            >
-              <option v-for="w in wilayahList" :key="w.id" :value="w.id">{{ w.nama }}</option>
-            </select>
-          </div>
-
-          <!-- Alamat / Patokan Lokasi -->
+          <!-- Alamat / Patokan Lokasi (Wajib, Tepat di atas Wilayah Surabaya) -->
           <div class="space-y-1">
             <div class="flex items-center justify-between">
               <label class="block text-xs font-black uppercase">
-                Alamat / Patokan Lokasi (Opsional)
+                Alamat / Patokan Lokasi <span class="text-[#FF3B3B]">*</span>
               </label>
               <span v-if="isGeocoding" class="text-[10px] font-black text-[#0D0D0D] bg-[#FFE500] px-1.5 py-0.5 border border-[#0D0D0D] animate-pulse">
                 Mendeteksi Alamat...
@@ -970,22 +1011,23 @@ onUnmounted(() => {
             <textarea
               v-model="formAlamat"
               rows="2"
+              required
               class="border-3 border-[#0D0D0D] bg-white w-full p-2.5 font-medium text-xs shadow-[2px_2px_0px_#0D0D0D] outline-none"
               placeholder="Contoh: Jl. Basuki Rahmat No. 12, Embong Kaliasin, Genteng (atau patokan dekat tempat)"
             ></textarea>
             
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1">
               <span class="text-[10px] text-neutral-500 font-medium">
-                Alamat otomatis terdeteksi saat pakai GPS / klik peta, atau ketik alamat manual.
+                Ketik alamat lalu klik cari untuk memunculkan titik koordinat & peta mini.
               </span>
               <button
                 type="button"
                 @click="searchCoordsFromAddress"
                 :disabled="isSearchingAddress || !formAlamat"
-                class="border-2 border-[#0D0D0D] bg-[#FFE500] text-[#0D0D0D] font-black text-[10px] uppercase px-2.5 py-1 shadow-[2px_2px_0px_#0D0D0D] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#0D0D0D] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_#0D0D0D] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap self-end sm:self-auto"
+                class="border-2 border-[#0D0D0D] bg-[#FFE500] text-[#0D0D0D] font-black text-[10px] uppercase px-3 py-1.5 shadow-[2px_2px_0px_#0D0D0D] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#0D0D0D] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_#0D0D0D] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer whitespace-nowrap self-end sm:self-auto"
                 title="Sesuaikan titik koordinat dan marker peta dari alamat yang diketik"
               >
-                {{ isSearchingAddress ? 'Mencari...' : 'Cari di Peta ➔' }}
+                {{ isSearchingAddress ? 'Mencari...' : 'CARI DI PETA ➔' }}
               </button>
             </div>
 
@@ -995,6 +1037,38 @@ onUnmounted(() => {
             <div v-if="geocodeError" class="text-[10px] font-bold text-white bg-[#FF3B3B] px-2 py-1 border border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D]">
               {{ geocodeError }}
             </div>
+          </div>
+
+          <!-- Peta Mini & Titik Koordinat Interaktif -->
+          <div v-show="showMiniMap || (formLat !== null && formLng !== null)" class="border-3 border-[#0D0D0D] bg-[#FFFBF0] p-3 space-y-2 shadow-[3px_3px_0px_#0D0D0D]">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <span class="text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 text-[#0D0D0D]">
+                <span class="inline-block w-2.5 h-2.5 bg-[#FF3B3B] border border-[#0D0D0D]"></span>
+                PETA TITIK LOKASI & KOORDINAT
+              </span>
+              <span class="font-mono font-black text-[11px] bg-[#0D0D0D] text-[#FFE500] px-2 py-0.5 border border-[#0D0D0D]">
+                Lat: {{ formLat !== null ? formLat.toFixed(6) : '-' }}, Lng: {{ formLng !== null ? formLng.toFixed(6) : '-' }}
+              </span>
+            </div>
+            <div
+              ref="miniMapContainer"
+              class="w-full h-44 border-2 border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D] relative z-0 bg-neutral-200"
+            ></div>
+            <p class="text-[10px] text-neutral-600 font-bold leading-tight">
+              💡 Geser pin (drag) atau klik pada peta mini di atas untuk koreksi posisi titik secara presisi.
+            </p>
+          </div>
+
+          <!-- Wilayah Surabaya (Wajib, Tepat di bawah Alamat & Peta Mini) -->
+          <div class="space-y-1">
+            <label class="block text-xs font-black uppercase">Wilayah Surabaya <span class="text-[#FF3B3B]">*</span></label>
+            <select
+              v-model="formWilayahId"
+              class="border-3 border-[#0D0D0D] bg-white w-full p-2.5 font-bold text-sm shadow-[2px_2px_0px_#0D0D0D] outline-none"
+              required
+            >
+              <option v-for="w in wilayahList" :key="w.id" :value="w.id">{{ w.nama }}</option>
+            </select>
           </div>
 
           <!-- Judul -->
