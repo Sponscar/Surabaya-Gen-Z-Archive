@@ -1,0 +1,33 @@
+{
+  "name": "sgza",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@12.16.1",
+  "scripts": {
+    "dev": "docker compose up -d && concurrently -k -p \"[{name}]\" -n \"API,WEB\" -c \"cyan.bold,yellow.bold\" \"pnpm --filter api dev\" \"pnpm --filter web dev\"",
+    "dev:turbo": "turbo run dev",
+    "dev:api": "pnpm --filter api dev",
+    "dev:web": "pnpm --filter web dev",
+    "build": "turbo run build",
+    "build:api": "pnpm --filter api build",
+    "build:web": "pnpm --filter web build",
+    "lint": "turbo run lint",
+    "db:migrate": "pnpm --filter api mikro-orm migration:up",
+    "db:seed": "pnpm --filter api seed"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6",
+    "turbo": "latest"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "bcrypt",
+      "esbuild"
+    ]
+  }
+}

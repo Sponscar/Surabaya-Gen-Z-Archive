@@ -1,0 +1,17 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: sgza_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sgza_db
+    ports:
+      - '5433:5432'
+    volumes:
+      - sgza_pgdata:/var/lib/postgresql/data
+
+volumes:
+  sgza_pgdata:
+
