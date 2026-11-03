@@ -9,13 +9,14 @@ export const api = axios.create({
 
 // Request interceptor to attach JWT token
 api.interceptors.request.use((config) => {
-  // If sending FormData, delete Content-Type to let browser set boundary automatically
-  if (config.data instanceof FormData && config.headers) {
-    delete config.headers['Content-Type']
-  }
   const token = localStorage.getItem('sgza_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+  }
+  // Jangan set Content-Type jika data adalah FormData
+  // Biarkan browser otomatis set dengan boundary yang benar
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type']
   }
   return config
 })
@@ -32,6 +33,35 @@ api.interceptors.response.use(
       }
     }
     return Promise.reject(error)
-  }
+  },
 )
 
+/**
+ * Upload FormData menggunakan fetch native (bukan axios) untuk menghindari
+ * konflik header Content-Type. Axios instance berpotensi override boundary.
+ */
+export async function apiFormData(
+  method: 'POST' | 'PATCH',
+  url: string,
+  formData: FormData,
+): Promise<any> {
+  const token = localStorage.getItem('sgza_token')
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  // JANGAN set Content-Type — browser akan auto-set dengan boundary
+
+  const response = await fetch(`/api${url}`, {
+    method,
+    headers,
+    body: formData,
+  })
+
+  if (!response.ok) {
+    const errBody = await response.json().catch(() => ({ message: `HTTP ${response.status}` }))
+    const err: any = new Error(errBody.message || `HTTP ${response.status}`)
+    err.response = { status: response.status, data: errBody }
+    throw err
+  }
+
+  return response.json()
+}
