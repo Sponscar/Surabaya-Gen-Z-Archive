@@ -37,10 +37,10 @@ export class TitikBudayaService {
     const result = await this.em.getConnection().execute(
       `
       INSERT INTO "titik_budaya" (
-        "user_id", "wilayah_id", "judul", "deskripsi", "foto_path", 
+        "user_id", "wilayah_id", "judul", "deskripsi", "alamat", "foto_path", 
         "slang_terkait", "koordinat", "status", "created_at"
       ) VALUES (
-        ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?,
         ?, ST_SetSRID(ST_MakePoint(?, ?), 4326), ?, NOW()
       ) RETURNING id, judul, status, created_at;
       `,
@@ -49,6 +49,7 @@ export class TitikBudayaService {
         wilayah.id,
         dto.judul.trim(),
         dto.deskripsi?.trim() || null,
+        dto.alamat?.trim() || null,
         `/api/uploads/titik/${fotoFilename}`,
         dto.slangTerkait?.trim() || null,
         dto.lng,
@@ -70,8 +71,10 @@ export class TitikBudayaService {
     let sql = `
       SELECT 
         tb.id,
+        tb.wilayah_id AS "wilayahId",
         tb.judul,
         tb.deskripsi,
+        tb.alamat,
         tb.foto_path AS "fotoPath",
         tb.slang_terkait AS "slangTerkait",
         tb.status,
@@ -114,8 +117,10 @@ export class TitikBudayaService {
       `
       SELECT 
         tb.id,
+        tb.wilayah_id AS "wilayahId",
         tb.judul,
         tb.deskripsi,
+        tb.alamat,
         tb.foto_path AS "fotoPath",
         tb.slang_terkait AS "slangTerkait",
         tb.status,

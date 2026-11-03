@@ -21,6 +21,10 @@ export class CreateTitikBudayaDto {
 
   @IsString()
   @IsOptional()
+  alamat?: string;
+
+  @IsString()
+  @IsOptional()
   slangTerkait?: string;
 
   @Type(() => Number)
