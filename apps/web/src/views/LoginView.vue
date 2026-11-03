@@ -18,7 +18,10 @@ const isLoading = ref(false)
 const errorMsg = ref<string | null>(null)
 
 async function handleLogin() {
-  if (!email.value || !password.value) {
+  const cleanEmail = email.value.trim()
+  const cleanPassword = password.value.trim()
+
+  if (!cleanEmail || !cleanPassword) {
     errorMsg.value = 'Email dan password wajib diisi.'
     return
   }
@@ -28,8 +31,8 @@ async function handleLogin() {
 
   try {
     const res = await api.post('/auth/login', {
-      email: email.value,
-      password: password.value,
+      email: cleanEmail,
+      password: cleanPassword,
     })
 
     const { accessToken, user } = res.data
@@ -41,7 +44,11 @@ async function handleLogin() {
       router.push('/map')
     }
   } catch (err: any) {
-    errorMsg.value = err.response?.data?.message || 'Login gagal. Periksa kembali email dan password Anda.'
+    if (!err.response) {
+      errorMsg.value = 'Tidak dapat terhubung ke server backend (port 3000). Pastikan server backend sedang aktif.'
+    } else {
+      errorMsg.value = err.response?.data?.message || 'Email atau password salah.'
+    }
   } finally {
     isLoading.value = false
   }
@@ -50,6 +57,7 @@ async function handleLogin() {
 function fillDemoAdmin() {
   email.value = 'admin@sgza.id'
   password.value = 'AdminSGZA2026!'
+  errorMsg.value = null
 }
 </script>
 
@@ -62,8 +70,9 @@ function fillDemoAdmin() {
         <p class="text-xs font-bold text-neutral-600">Masuk untuk mengarsipkan titik budaya kota</p>
       </div>
 
-      <div v-if="errorMsg" class="border-2 border-[#0D0D0D] bg-[#FF3B3B] text-white p-3 text-xs font-bold shadow-[2px_2px_0px_#0D0D0D]">
-        ⚠️ {{ errorMsg }}
+      <div v-if="errorMsg" class="border-2 border-[#0D0D0D] bg-[#FF3B3B] text-white p-3 text-xs font-bold shadow-[2px_2px_0px_#0D0D0D] flex items-center gap-2">
+        <span class="w-4 h-4 bg-white text-[#FF3B3B] font-black text-[10px] flex items-center justify-center">!</span>
+        <span>{{ errorMsg }}</span>
       </div>
 
       <form class="space-y-4" @submit.prevent="handleLogin">
@@ -83,8 +92,10 @@ function fillDemoAdmin() {
             />
             <button
               type="button"
-              @click="showPassword = !showPassword"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 border-2 border-[#0D0D0D] bg-[#FFE500] hover:bg-[#ffe81a] text-[#0D0D0D] shadow-[1px_1px_0px_#0D0D0D] transition-all flex items-center justify-center cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
+              tabindex="-1"
+              @pointerdown.prevent="showPassword = !showPassword"
+              @click.prevent
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 border-2 border-[#0D0D0D] bg-[#FFE500] hover:bg-[#ffe81a] text-[#0D0D0D] shadow-[1px_1px_0px_#0D0D0D] active:shadow-none flex items-center justify-center cursor-pointer select-none transition-colors duration-75"
               :title="showPassword ? 'Sembunyikan password' : 'Tampilkan password'"
               aria-label="Toggle password visibility"
             >
@@ -106,9 +117,10 @@ function fillDemoAdmin() {
       <div class="border-2 border-dashed border-[#0D0D0D] p-3 bg-[#FFFBF0] flex items-center justify-between">
         <div>
           <span class="text-[10px] font-black uppercase block text-neutral-500">Demo Akun Kurator Admin</span>
-          <span class="text-xs font-mono font-bold">admin@sgza.id</span>
+          <span class="text-xs font-mono font-bold block">admin@sgza.id</span>
+          <span class="text-[11px] font-mono text-neutral-500">Password: AdminSGZA2026!</span>
         </div>
-        <Button variant="outline" size="sm" class="text-[11px]" @click="fillDemoAdmin">
+        <Button variant="outline" size="sm" type="button" class="text-[11px]" @click="fillDemoAdmin">
           Gunakan Demo
         </Button>
       </div>

@@ -19,7 +19,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     private readonly userRepo: EntityRepository<User>,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+        ExtractJwt.fromUrlQueryParameter('token'),
+      ]),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET || 'sgza_jwt_secret_ganti_di_production',
     });

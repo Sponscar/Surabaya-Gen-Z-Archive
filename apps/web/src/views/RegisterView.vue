@@ -4,7 +4,6 @@ import { RouterLink } from 'vue-router'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Input from '@/components/ui/Input.vue'
-import Card from '@/components/ui/Card.vue'
 import { api } from '@/lib/api'
 
 // Use string literals instead of enum to avoid ESM/CJS runtime issues
@@ -141,31 +140,52 @@ async function handleRegister() {
     formData.append('password', password.value)
     formData.append('namaLengkap', namaLengkap.value)
     formData.append('nik', nik.value)
+    formData.append('alamatLengkap', alamat.value)
     formData.append('alamat', alamat.value)
     formData.append('whatsapp', whatsapp.value)
     formData.append('jenisInstansi', jenisInstansi.value)
 
     let detailPayload: Record<string, any> = {}
     if (jenisInstansi.value === JENIS_INSTANSI.PERGURUAN_TINGGI) {
-      detailPayload = instansiPerguruanTinggi.value
+      detailPayload = {
+        namaPT: instansiPerguruanTinggi.value.namaKampus,
+        namaKampus: instansiPerguruanTinggi.value.namaKampus,
+        fakultas: instansiPerguruanTinggi.value.fakultas,
+        jurusan: instansiPerguruanTinggi.value.jurusan,
+        nim: instansiPerguruanTinggi.value.nim,
+      }
     } else if (jenisInstansi.value === JENIS_INSTANSI.SEKOLAH) {
-      detailPayload = instansiSekolah.value
+      detailPayload = {
+        namaSekolah: instansiSekolah.value.namaSekolah,
+        kelas: instansiSekolah.value.kelas,
+        nisn: instansiSekolah.value.nisn,
+      }
     } else if (jenisInstansi.value === JENIS_INSTANSI.KOMUNITAS) {
-      detailPayload = instansiKomunitas.value
+      detailPayload = {
+        namaKomunitas: instansiKomunitas.value.namaKomunitas,
+        peran: instansiKomunitas.value.peran,
+        mediaSosial: instansiKomunitas.value.mediaSosial,
+      }
     } else {
-      detailPayload = instansiLainnya.value
+      detailPayload = {
+        namaLembaga: instansiLainnya.value.namaLembaga,
+        deskripsi: instansiLainnya.value.deskripsi || instansiLainnya.value.namaLembaga,
+      }
     }
 
     formData.append('instansiDetail', JSON.stringify(detailPayload))
+    formData.append('ktp', fotoKtp.value)
     formData.append('fotoKtp', fotoKtp.value)
 
-    await api.post('/auth/register', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    await api.post('/auth/register', formData)
 
     isSuccess.value = true
   } catch (err: any) {
-    errorMsg.value = err.response?.data?.message || 'Registrasi gagal. Mohon periksa kembali input Anda.'
+    if (Array.isArray(err.response?.data?.message)) {
+      errorMsg.value = err.response.data.message.join('. ')
+    } else {
+      errorMsg.value = err.response?.data?.message || 'Registrasi gagal. Mohon periksa kembali input Anda.'
+    }
   } finally {
     isSubmitting.value = false
   }
@@ -176,8 +196,8 @@ async function handleRegister() {
   <div class="py-12 px-4 sm:px-6 max-w-2xl mx-auto space-y-8">
     <!-- Success Screen -->
     <div v-if="isSuccess" class="border-3 border-[#0D0D0D] bg-white p-8 shadow-[8px_8px_0px_#0D0D0D] space-y-6 text-center">
-      <div class="inline-block p-4 bg-[#FFE500] border-3 border-[#0D0D0D] text-4xl shadow-[4px_4px_0px_#0D0D0D]">
-        🎉
+      <div class="inline-block px-6 py-3 bg-[#FFE500] border-3 border-[#0D0D0D] font-black text-2xl shadow-[4px_4px_0px_#0D0D0D]">
+        SUKSES
       </div>
       <Badge variant="green" class="text-sm">PENDAFTARAN BERHASIL</Badge>
       <h2 class="text-3xl font-black uppercase text-[#0D0D0D]">Mbois, Rek! Akun Terdaftar</h2>
@@ -221,8 +241,9 @@ async function handleRegister() {
       </div>
 
       <!-- Error Message -->
-      <div v-if="errorMsg" class="border-2 border-[#0D0D0D] bg-[#FF3B3B] text-white p-3 text-xs font-bold shadow-[2px_2px_0px_#0D0D0D]">
-        ⚠️ {{ errorMsg }}
+      <div v-if="errorMsg" class="border-2 border-[#0D0D0D] bg-[#FF3B3B] text-white p-3 text-xs font-bold shadow-[2px_2px_0px_#0D0D0D] flex items-center gap-2">
+        <span class="w-4 h-4 bg-white text-[#FF3B3B] font-black text-[10px] flex items-center justify-center">!</span>
+        <span>{{ errorMsg }}</span>
       </div>
 
       <!-- STEP 1: Akun -->
@@ -246,8 +267,10 @@ async function handleRegister() {
             />
             <button
               type="button"
-              @click="showPassword = !showPassword"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 border-2 border-[#0D0D0D] bg-[#FFE500] hover:bg-[#ffe81a] text-[#0D0D0D] shadow-[1px_1px_0px_#0D0D0D] transition-all flex items-center justify-center cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
+              tabindex="-1"
+              @pointerdown.prevent="showPassword = !showPassword"
+              @click.prevent
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 border-2 border-[#0D0D0D] bg-[#FFE500] hover:bg-[#ffe81a] text-[#0D0D0D] shadow-[1px_1px_0px_#0D0D0D] active:shadow-none flex items-center justify-center cursor-pointer select-none transition-colors duration-75"
               :title="showPassword ? 'Sembunyikan password' : 'Tampilkan password'"
               aria-label="Toggle password visibility"
             >
@@ -273,8 +296,10 @@ async function handleRegister() {
             />
             <button
               type="button"
-              @click="showConfirmPassword = !showConfirmPassword"
-              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 border-2 border-[#0D0D0D] bg-[#FFE500] hover:bg-[#ffe81a] text-[#0D0D0D] shadow-[1px_1px_0px_#0D0D0D] transition-all flex items-center justify-center cursor-pointer active:translate-x-[1px] active:translate-y-[1px]"
+              tabindex="-1"
+              @pointerdown.prevent="showConfirmPassword = !showConfirmPassword"
+              @click.prevent
+              class="absolute right-2.5 top-1/2 -translate-y-1/2 p-1.5 border-2 border-[#0D0D0D] bg-[#FFE500] hover:bg-[#ffe81a] text-[#0D0D0D] shadow-[1px_1px_0px_#0D0D0D] active:shadow-none flex items-center justify-center cursor-pointer select-none transition-colors duration-75"
               :title="showConfirmPassword ? 'Sembunyikan password' : 'Tampilkan password'"
               aria-label="Toggle confirm password visibility"
             >
@@ -303,7 +328,7 @@ async function handleRegister() {
           <label class="block text-xs font-black uppercase">Nomor Induk Kependudukan (NIK) <span class="text-[#FF3B3B]">*</span></label>
           <Input v-model="nik" maxlength="16" placeholder="3578xxxxxxxxxxxx" required />
           <div v-if="nikWarning" class="text-[11px] font-bold text-[#FF3B3B] mt-1">
-            ❌ {{ nikWarning }}
+            [X] {{ nikWarning }}
           </div>
           <div v-else-if="isSurabayaNik" class="text-[11px] font-bold text-[#00C566] mt-1">
             ✓ NIK teridentifikasi resmi Kota Surabaya.
@@ -413,7 +438,7 @@ async function handleRegister() {
 
         <div class="border-2 border-[#0D0D0D] bg-[#FFE500] p-4 text-xs font-bold space-y-1 shadow-[3px_3px_0px_#0D0D0D]">
           <div class="flex items-center gap-2">
-            <span class="text-base">🔒</span>
+            <span class="px-1.5 py-0.5 bg-[#0D0D0D] text-[#FFE500] font-black text-[10px] border border-[#0D0D0D]">AES-256</span>
             <span class="uppercase font-black">Kepatuhan UU Perlindungan Data Pribadi (UU PDP):</span>
           </div>
           <p class="font-medium text-neutral-800">
@@ -443,8 +468,8 @@ async function handleRegister() {
               isDragging ? 'bg-[#FFE500]' : 'bg-white hover:bg-[#FFFBF0]'
             ]"
           >
-            <div class="w-12 h-12 bg-[#FFE500] border-2 border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D] flex items-center justify-center text-2xl">
-              📷
+            <div class="w-12 h-12 bg-[#FFE500] border-2 border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D] flex items-center justify-center font-black text-sm text-[#0D0D0D]">
+              KTP
             </div>
             <div class="space-y-1">
               <span class="inline-block px-4 py-2 bg-[#0D0D0D] text-[#FFE500] text-xs font-black uppercase tracking-wider border-2 border-[#0D0D0D] shadow-[2px_2px_0px_#0D0D0D] cursor-pointer hover:bg-neutral-800 transition-colors">

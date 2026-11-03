@@ -18,7 +18,7 @@ export class DatabaseSeeder extends Seeder {
     const wilayah = await this.seedWilayah(em);
     await this.seedTitikSejarah(em, wilayah);
     await em.flush();
-    console.log('✅ Seed selesai.');
+    console.log('[SEED] Seed selesai.');
   }
 
   // ── Admin User ─────────────────────────────────────────────────────────────
@@ -28,7 +28,7 @@ export class DatabaseSeeder extends Seeder {
 
     const admin = em.create(User, {
       email: 'admin@sgza.id',
-      passwordHash: await bcrypt.hash('Admin@SGZA2026!', 12),
+      passwordHash: await bcrypt.hash('AdminSGZA2026!', 12),
       namaLengkap: 'Admin SGZA',
       nikEncrypted: 'ADMIN_NO_NIK',
       alamatLengkap: 'Surabaya',
@@ -39,7 +39,7 @@ export class DatabaseSeeder extends Seeder {
       createdAt: new Date(),
     });
     em.persist(admin);
-    console.log('👤 Admin user seeded: admin@sgza.id');
+    console.log('[ADMIN] Admin user seeded: admin@sgza.id');
   }
 
   // ── Wilayah ────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ export class DatabaseSeeder extends Seeder {
       });
       em.persist(w);
       map[data.nama] = w;
-      console.log(`🗺️  Wilayah ${data.nama} seeded`);
+      console.log(`[WILAYAH] Wilayah ${data.nama} seeded`);
     }
     return map as Record<NamaWilayah, Wilayah>;
   }
@@ -300,6 +300,6 @@ export class DatabaseSeeder extends Seeder {
       });
       em.persist(titik);
     }
-    console.log(`📍 ${titikData.length} titik sejarah seeded`);
+    console.log(`[TITIK SEJARAH] ${titikData.length} titik sejarah seeded`);
   }
 }

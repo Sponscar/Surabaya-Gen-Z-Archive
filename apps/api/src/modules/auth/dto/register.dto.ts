@@ -31,9 +31,13 @@ export class RegisterDto {
   @Matches(/^\d{16}$/, { message: 'NIK hanya boleh berisi angka' })
   nik!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty({ message: 'Alamat lengkap wajib diisi' })
-  alamatLengkap!: string;
+  alamatLengkap?: string;
+
+  @IsOptional()
+  @IsString()
+  alamat?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Nomor WhatsApp wajib diisi' })
@@ -48,5 +52,8 @@ export class RegisterDto {
    */
   @IsOptional()
   instansiDetail?: string | Record<string, string>;
+
+  @IsOptional()
+  pdpConsent?: boolean | string;
 }
 

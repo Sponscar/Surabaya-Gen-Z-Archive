@@ -5,10 +5,10 @@ import {
   HttpCode,
   HttpStatus,
   Post,
-  UploadedFile,
+  UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -28,40 +28,51 @@ export class AuthController {
 
   /**
    * POST /api/auth/register
-   * Menerima multipart/form-data dengan field form + file KTP ('ktp')
+   * Menerima multipart/form-data dengan field form + file KTP ('ktp' atau 'fotoKtp')
    */
   @Post('register')
   @UseInterceptors(
-    FileInterceptor('ktp', {
-      storage: diskStorage({
-        destination: KTP_UPLOAD_DIR,
-        filename: (_req, file, cb) => {
-          const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-          const ext = path.extname(file.originalname).toLowerCase();
-          cb(null, `ktp-${uniqueSuffix}${ext}`);
+    FileFieldsInterceptor(
+      [
+        { name: 'ktp', maxCount: 1 },
+        { name: 'fotoKtp', maxCount: 1 },
+      ],
+      {
+        storage: diskStorage({
+          destination: KTP_UPLOAD_DIR,
+          filename: (_req, file, cb) => {
+            const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+            const ext = path.extname(file.originalname).toLowerCase();
+            cb(null, `ktp-${uniqueSuffix}${ext}`);
+          },
+        }),
+        limits: {
+          fileSize: 5 * 1024 * 1024, // Maksimal 5MB
         },
-      }),
-      limits: {
-        fileSize: 5 * 1024 * 1024, // Maksimal 5MB
+        fileFilter: (_req, file, cb) => {
+          const allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
+          if (!allowedMime.includes(file.mimetype)) {
+            return cb(
+              new BadRequestException(
+                'Format foto KTP harus berupa JPG, PNG, atau WebP',
+              ),
+              false,
+            );
+          }
+          cb(null, true);
+        },
       },
-      fileFilter: (_req, file, cb) => {
-        const allowedMime = ['image/jpeg', 'image/png', 'image/webp'];
-        if (!allowedMime.includes(file.mimetype)) {
-          return cb(
-            new BadRequestException(
-              'Format foto KTP harus berupa JPG, PNG, atau WebP',
-            ),
-            false,
-          );
-        }
-        cb(null, true);
-      },
-    }),
+    ),
   )
   async register(
     @Body() dto: RegisterDto,
-    @UploadedFile() file?: Express.Multer.File,
+    @UploadedFiles()
+    files?: {
+      ktp?: Express.Multer.File[];
+      fotoKtp?: Express.Multer.File[];
+    },
   ) {
+    const file = files?.ktp?.[0] || files?.fotoKtp?.[0];
     if (!file) {
       throw new BadRequestException('Foto KTP wajib diunggah untuk verifikasi domisili');
     }

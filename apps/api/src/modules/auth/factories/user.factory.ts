@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { JenisInstansi } from '@sgza/shared';
 import { RegisterDto } from '../dto/register.dto';
 import { CryptoUtil } from '../../../common/crypto/crypto.util';
@@ -36,7 +36,9 @@ export class UserFactory {
     switch (jenis) {
       case JenisInstansi.PERGURUAN_TINGGI:
         return {
-          namaPT: (detail.namaPT || detail.nama || '').trim(),
+          namaPerguruanTinggi: (detail.namaPerguruanTinggi || detail.namaPT || detail.namaKampus || detail.nama || '').trim(),
+          fakultas: (detail.fakultas || '').trim(),
+          jurusan: (detail.jurusan || '').trim(),
           nim: (detail.nim || '').trim(),
         };
 
@@ -44,17 +46,21 @@ export class UserFactory {
         return {
           namaSekolah: (detail.namaSekolah || detail.nama || '').trim(),
           kelas: (detail.kelas || '').trim(),
+          nisn: (detail.nisn || '').trim(),
         };
 
       case JenisInstansi.KOMUNITAS:
         return {
           namaKomunitas: (detail.namaKomunitas || detail.nama || '').trim(),
+          peran: (detail.peran || '').trim(),
+          mediaSosial: (detail.mediaSosial || '').trim(),
         };
 
       case JenisInstansi.LAINNYA:
       default:
         return {
-          deskripsi: (detail.deskripsi || '').trim(),
+          namaLembaga: (detail.namaLembaga || '').trim(),
+          deskripsi: (detail.deskripsi || detail.namaLembaga || '').trim(),
         };
     }
   }
@@ -74,6 +80,11 @@ export class UserFactory {
       );
     }
 
+    const alamat = (dto.alamatLengkap || dto.alamat || '').trim();
+    if (!alamat) {
+      throw new BadRequestException('Alamat domisili wajib diisi');
+    }
+
     const normalizedDetail = this.normalizeInstansiDetail(
       dto.jenisInstansi,
       dto.instansiDetail,
@@ -84,7 +95,7 @@ export class UserFactory {
       passwordHash,
       namaLengkap: dto.namaLengkap.trim(),
       nikEncrypted: CryptoUtil.encrypt(dto.nik.trim()),
-      alamatLengkap: dto.alamatLengkap.trim(),
+      alamatLengkap: alamat,
       whatsapp: dto.whatsapp.trim(),
       jenisInstansi: dto.jenisInstansi,
       instansiDetail: normalizedDetail,

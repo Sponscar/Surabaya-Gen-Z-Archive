@@ -9,6 +9,10 @@ export const api = axios.create({
 
 // Request interceptor to attach JWT token
 api.interceptors.request.use((config) => {
+  // If sending FormData, delete Content-Type to let browser set boundary automatically
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type']
+  }
   const token = localStorage.getItem('sgza_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
